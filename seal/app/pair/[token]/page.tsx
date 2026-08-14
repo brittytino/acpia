@@ -1,6 +1,4 @@
 "use client";
-// Phone-side of QR pairing (VERITAS §5.1). Scanned from the Console, seals
-// straight into the investigator's case — no cable, no account.
 import { useEffect, useState } from "react";
 import { sealFile, formatHash, type SealResult } from "@/lib/seal";
 
@@ -15,12 +13,12 @@ export default function PairPage({ params }: { params: { token: string } }) {
 
   useEffect(() => {
     fetch(`${API_BASE}/api/v1/pair/${params.token}`)
-      .then(res => {
+      .then((res) => {
         if (res.status === 410) { setStatus("expired"); return null; }
         if (!res.ok) { setStatus("error"); return null; }
         return res.json();
       })
-      .then(data => {
+      .then((data) => {
         if (data) { setCaseReference(data.case_reference); setStatus("ready"); }
       })
       .catch(() => setStatus("error"));
@@ -28,7 +26,7 @@ export default function PairPage({ params }: { params: { token: string } }) {
 
   const handleFile = async (f: File) => {
     const s = await sealFile(f);
-    setSealed(prev => [...prev, s]);
+    setSealed((prev) => [...prev, s]);
   };
 
   const send = async () => {
@@ -39,11 +37,16 @@ export default function PairPage({ params }: { params: { token: string } }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          artifacts: sealed.map(s => ({ filename: s.filename, sha256: s.sha256, size_bytes: s.sizeBytes, mime_type: s.mimeType })),
+          artifacts: sealed.map((s) => ({
+            filename: s.filename,
+            sha256: s.sha256,
+            size_bytes: s.sizeBytes,
+            mime_type: s.mimeType,
+          })),
         }),
       });
       if (res.ok) {
-        setSentCount(c => c + sealed.length);
+        setSentCount((c) => c + sealed.length);
         setSealed([]);
       }
     } finally {
@@ -51,59 +54,111 @@ export default function PairPage({ params }: { params: { token: string } }) {
     }
   };
 
-  if (status === "loading") return <Centered>Checking pairing link...</Centered>;
-  if (status === "expired") return <Centered>This pairing link has expired. Ask the investigator for a new QR code.</Centered>;
-  if (status === "error") return <Centered>Pairing link not found.</Centered>;
+  if (status === "loading") {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-app)", padding: "20px" }}>
+        <div className="card" style={{ maxWidth: "420px", textAlign: "center" }}>
+          <p>Verifying secure pairing session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === "expired") {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-app)", padding: "20px" }}>
+        <div className="card" style={{ maxWidth: "420px", textAlign: "center" }}>
+          <h2 style={{ color: "var(--danger)", marginBottom: "8px" }}>Pairing Session Expired</h2>
+          <p>This QR session has timed out. Please request a new pairing QR code from the investigator.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === "error") {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-app)", padding: "20px" }}>
+        <div className="card" style={{ maxWidth: "420px", textAlign: "center" }}>
+          <h2 style={{ color: "var(--danger)", marginBottom: "8px" }}>Invalid QR Session</h2>
+          <p>Pairing link not found or invalid.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <main style={{ minHeight: "100vh", background: "var(--ink)", color: "white", display: "flex", flexDirection: "column", alignItems: "center", padding: "2rem 1.25rem" }}>
-      <div style={{ maxWidth: "480px", width: "100%" }}>
-        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-          <div style={{ fontSize: "1.75rem", marginBottom: "0.5rem" }}>📱</div>
-          <h1 style={{ fontSize: "1.4rem", marginBottom: "0.5rem" }}>Paired to {caseReference}</h1>
-          <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.85rem" }}>
-            Files are hashed on this device. Only the hash is sent — never the file itself.
+    <div style={{ minHeight: "100vh", background: "var(--bg-app)", display: "flex", flexDirection: "column", alignItems: "center", padding: "32px 16px" }}>
+      <div style={{ maxWidth: "460px", width: "100%" }}>
+        {/* Header */}
+        <div className="card card-gold-accent" style={{ marginBottom: "20px", textAlign: "center" }}>
+          <img src="/logo.png" alt="VERITAS Logo" style={{ height: "40px", margin: "0 auto 12px", display: "block" }} />
+          <span className="badge badge-gold" style={{ marginBottom: "8px" }}>Direct Device Sealing</span>
+          <h1 style={{ fontSize: "1.35rem", color: "var(--primary)", marginBottom: "4px" }}>
+            Paired to Case {caseReference}
+          </h1>
+          <p style={{ fontSize: "0.8125rem", margin: 0 }}>
+            Files are fingerprinted in memory on this device. Only cryptographic hashes are sent to the case ledger.
           </p>
         </div>
 
-        <div
-          onClick={() => document.getElementById("pair-file-input")?.click()}
-          style={{ border: "2px dashed rgba(255,255,255,0.25)", borderRadius: "var(--radius-lg)", padding: "3rem 1.5rem", textAlign: "center", cursor: "pointer", marginBottom: "1.25rem" }}
-        >
-          <input id="pair-file-input" type="file" style={{ display: "none" }} onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
-          <div style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>🛡️</div>
-          <p style={{ fontWeight: 600 }}>Tap to add a photo or file</p>
+        {/* Upload Action */}
+        <div className="card" style={{ marginBottom: "20px" }}>
+          <div
+            onClick={() => document.getElementById("pair-file-input")?.click()}
+            style={{
+              border: "2px dashed var(--secondary)",
+              borderRadius: "var(--radius-sm)",
+              padding: "32px 16px",
+              textAlign: "center",
+              cursor: "pointer",
+              background: "var(--secondary-light)",
+            }}
+          >
+            <input
+              id="pair-file-input"
+              type="file"
+              style={{ display: "none" }}
+              onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+            />
+            <div style={{ fontSize: "2rem", marginBottom: "8px" }}>📱</div>
+            <div style={{ fontWeight: 700, color: "var(--primary)", fontSize: "0.9375rem" }}>
+              Tap to select photo or evidence file
+            </div>
+            <div style={{ fontSize: "0.75rem", color: "var(--gray-600)", marginTop: "4px" }}>
+              No cables or software installation required
+            </div>
+          </div>
         </div>
 
         {sealed.length > 0 && (
-          <div style={{ marginBottom: "1.25rem" }}>
+          <div className="card" style={{ marginBottom: "20px" }}>
+            <div style={{ fontWeight: 700, marginBottom: "12px", fontSize: "0.875rem" }}>
+              Sealed Files ({sealed.length}):
+            </div>
             {sealed.map((s, i) => (
-              <div key={i} style={{ background: "rgba(255,255,255,0.06)", borderRadius: "var(--radius-sm)", padding: "0.75rem 1rem", marginBottom: "0.5rem" }}>
-                <div style={{ fontWeight: 600, fontSize: "0.9rem" }}>{s.filename}</div>
-                <div className="mono" style={{ fontSize: "0.65rem", color: "rgba(255,255,255,0.5)" }}>{formatHash(s.sha256).slice(0, 40)}…</div>
+              <div key={i} style={{ background: "var(--gray-50)", border: "var(--border)", borderRadius: "var(--radius-sm)", padding: "10px 12px", marginBottom: "8px" }}>
+                <div style={{ fontWeight: 700, fontSize: "0.875rem", color: "var(--gray-900)" }}>{s.filename}</div>
+                <div className="mono" style={{ fontSize: "0.6875rem", color: "var(--gray-600)" }}>
+                  {formatHash(s.sha256).slice(0, 32)}...
+                </div>
               </div>
             ))}
-            <button onClick={send} disabled={sending}
-              style={{ width: "100%", background: "var(--seal)", color: "var(--ink)", border: "none", padding: "1rem", borderRadius: "var(--radius-sm)", fontWeight: 600, fontSize: "1rem", cursor: sending ? "not-allowed" : "pointer" }}>
-              {sending ? "Sending..." : `Send ${sealed.length} hash${sealed.length !== 1 ? "es" : ""} to case →`}
+            <button
+              className="btn btn-primary btn-block btn-lg"
+              onClick={send}
+              disabled={sending}
+            >
+              {sending ? "Transmitting Hashes..." : `Transmit ${sealed.length} Hash${sealed.length !== 1 ? "es" : ""} to Case Ledger →`}
             </button>
           </div>
         )}
 
         {sentCount > 0 && (
-          <p style={{ textAlign: "center", color: "var(--seal)", fontSize: "0.9rem", fontWeight: 600 }}>
-            ✓ {sentCount} item{sentCount !== 1 ? "s" : ""} added to the case. Add more, or close this tab.
-          </p>
+          <div className="alert alert-success" style={{ textAlign: "center" }}>
+            ✓ <strong>{sentCount} evidence artifact{sentCount !== 1 ? "s" : ""}</strong> successfully recorded into Case {caseReference}. You may add more or close this tab.
+          </div>
         )}
       </div>
-    </main>
-  );
-}
-
-function Centered({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{ minHeight: "100vh", background: "var(--ink)", color: "white", display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem", textAlign: "center" }}>
-      <p>{children}</p>
     </div>
   );
 }

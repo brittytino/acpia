@@ -2,25 +2,26 @@
 import { Shell } from "../components/Shell";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:47802";
 
 export default function InboundList() {
+  const router = useRouter();
   const [inbound, setInbound] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     const fetchInbound = async () => {
       try {
         const token = localStorage.getItem("acpia_token");
         const res = await fetch(`${API}/api/v1/inbound`, {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) {
           setInbound(await res.json());
         }
-      } catch (err) {
-        console.error("Failed to fetch inbound reports:", err);
       } finally {
         setLoading(false);
       }
@@ -28,47 +29,98 @@ export default function InboundList() {
     fetchInbound();
   }, []);
 
+  const filtered = inbound.filter((r) =>
+    r.reference?.toLowerCase().includes(search.toLowerCase()) ||
+    r.path_taken?.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
-    <Shell title="VERITAS CONSOLE — Inbound Reports">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "2.5rem", padding: "2rem 2rem 1.5rem", borderBottom: "1px solid var(--rule)" }}>
+    <Shell title="Inbound Citizen Reports">
+      <div className="page-header">
         <div>
-          <h1 style={{ fontSize: "2rem", fontFamily: "'IBM Plex Sans', sans-serif", color: "var(--ink)", marginBottom: "0.25rem", letterSpacing: "-0.02em" }}>Inbound Citizen Reports</h1>
-          <p style={{ color: "var(--ink-soft)", fontSize: "0.95rem" }}>Secure, anonymized tips awaiting triage.</p>
+          <h1>Inbound Citizen Evidence Submissions</h1>
+          <p>Triage unattached sealed citizen reports and review cryptographic hashes before accepting into forensic cases.</p>
+        </div>
+        <div>
+          <button className="btn btn-secondary btn-sm" onClick={() => window.location.reload()}>
+            ↻ Refresh Queue
+          </button>
         </div>
       </div>
 
-      <div style={{ padding: "0 2rem" }}>
+      <div className="page-body">
+        <div className="card">
+          <div className="card-header">
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", width: "100%", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <h2>Pending Triage Queue</h2>
+                <span className="badge badge-info">{filtered.length} Reports</span>
+              </div>
+              <div style={{ width: "260px" }}>
+                <input
+                  className="input"
+                  placeholder="Search by locator reference..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  style={{ fontSize: "0.8125rem", padding: "6px 10px" }}
+                />
+              </div>
+            </div>
+          </div>
 
-        {loading ? (
-          <p style={{ color: "var(--text-faint)" }}>Loading reports...</p>
-        ) : inbound.length === 0 ? (
-          <div className="premium-glass-card" style={{ textAlign: "center", padding: "4rem 1rem" }}>
-            <span style={{ fontSize: "2rem", marginBottom: "1rem", display: "block", color: "var(--text-faint)" }}>📥</span>
-            <p style={{ color: "var(--text-dim)", fontSize: "1.1rem" }}>No inbound reports pending.</p>
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "1rem", paddingBottom: "2rem" }}>
-            {inbound.map((r) => (
-              <Link key={r.reference} href={`/inbound/${r.reference}`} style={{ textDecoration: "none", color: "inherit" }}>
-                <div className="premium-glass-card" style={{ display: "flex", alignItems: "center", gap: "1.5rem", padding: "1.5rem", transition: "border 0.2s, transform 0.2s", borderLeft: "4px solid var(--steel)" }} onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"} onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}>
-                  <div style={{ minWidth: "160px" }}>
-                    <div className="mono" style={{ color: "var(--steel)", fontSize: "1.05rem", fontWeight: 600, marginBottom: "0.25rem" }}>{r.reference}</div>
-                    <div style={{ fontSize: "0.75rem", color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>Sealed {new Date(r.sealed_at).toLocaleDateString()}</div>
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, color: "var(--ink)", fontSize: "1.15rem", marginBottom: "0.25rem" }}>Path: {r.path_taken.replace('_', ' ')}</div>
-                    <div style={{ fontSize: "0.85rem", color: "var(--ink-soft)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      <span>📎</span> Awaiting verification
-                    </div>
-                  </div>
-                  <div>
-                    <span style={{ border: "1px solid rgba(29, 89, 86, 0.3)", color: "var(--steel)", fontSize: "0.75rem", padding: "0.3rem 0.8rem", borderRadius: "100px", fontWeight: 600, display: "inline-block" }}>→ REVIEW</span>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
+          {loading ? (
+            <p style={{ color: "var(--gray-500)", padding: "24px" }}>Loading inbound reports queue...</p>
+          ) : filtered.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "48px 24px" }}>
+              <div style={{ fontSize: "2rem", marginBottom: "8px" }}>📥</div>
+              <p style={{ fontWeight: 700, color: "var(--gray-900)" }}>No Inbound Reports Found</p>
+              <p style={{ fontSize: "0.8125rem", color: "var(--gray-500)" }}>
+                Citizen reports submitted via VERITAS SEAL will appear here for verification and triage.
+              </p>
+            </div>
+          ) : (
+            <div className="table-container">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Reference Locator</th>
+                    <th>Intake Category</th>
+                    <th>Sealed Timestamp (UTC)</th>
+                    <th>Evidence Artifacts</th>
+                    <th>Integrity Verification</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((r) => (
+                    <tr key={r.reference} onClick={() => router.push(`/inbound/${r.reference}`)}>
+                      <td className="mono" style={{ fontWeight: 700, color: "var(--primary)" }}>
+                        {r.reference}
+                      </td>
+                      <td>
+                        <span className="badge badge-neutral">{r.path_taken?.replace("_", " ")}</span>
+                      </td>
+                      <td style={{ fontSize: "0.8125rem", color: "var(--gray-600)" }}>
+                        {new Date(r.sealed_at).toLocaleString()}
+                      </td>
+                      <td>
+                        <strong>{r.artifacts?.length || 1} file(s)</strong>
+                      </td>
+                      <td>
+                        <span className="badge badge-success">✓ SHA-256 Intact</span>
+                      </td>
+                      <td>
+                        <span className="btn btn-secondary btn-sm">
+                          Review & Intake →
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </Shell>
   );

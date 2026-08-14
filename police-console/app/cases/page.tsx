@@ -2,12 +2,15 @@
 import { Shell } from "../components/Shell";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:47802";
 
 export default function CasesList() {
+  const router = useRouter();
   const [cases, setCases] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
   const [showDisputeForm, setShowDisputeForm] = useState(false);
   const [disputeTitle, setDisputeTitle] = useState("");
   const [disputeScope, setDisputeScope] = useState("");
@@ -19,7 +22,7 @@ export default function CasesList() {
     try {
       const token = localStorage.getItem("acpia_token");
       const res = await fetch(`${API}/api/v1/cases`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) setCases(await res.json());
     } finally {
@@ -27,7 +30,9 @@ export default function CasesList() {
     }
   };
 
-  useEffect(() => { fetchCases(); }, []);
+  useEffect(() => {
+    fetchCases();
+  }, []);
 
   const openDispute = async () => {
     if (!disputeTitle || !disputeScope) return;
@@ -37,17 +42,20 @@ export default function CasesList() {
       const token = localStorage.getItem("acpia_token");
       const res = await fetch(`${API}/api/v1/disputes`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ title: disputeTitle, scope_summary: disputeScope }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.detail || "Could not open dispute");
+        throw new Error(body.detail || "Could not initialize FAIR dispute case");
       }
       setDisputeResult(await res.json());
       fetchCases();
     } catch (e: any) {
-      setError(e.message || "Could not open dispute");
+      setError(e.message || "Failed to initialize dispute.");
     } finally {
       setCreating(false);
     }
@@ -61,125 +69,212 @@ export default function CasesList() {
     setError(null);
   };
 
+  const filtered = cases.filter((c) =>
+    c.reference?.toLowerCase().includes(search.toLowerCase()) ||
+    c.title?.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
-    <Shell title="VERITAS CONSOLE — Active Cases">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "2.5rem", padding: "2rem 2rem 1.5rem", borderBottom: "1px solid var(--rule)" }}>
+    <Shell title="Active Forensic Cases">
+      <div className="page-header">
         <div>
-          <h1 style={{ fontSize: "2rem", fontFamily: "'IBM Plex Sans', sans-serif", color: "var(--ink)", marginBottom: "0.25rem", letterSpacing: "-0.02em" }}>Active Cases</h1>
-          <p style={{ color: "var(--ink-soft)", fontSize: "0.95rem" }}>GUARD investigations and FAIR disputes, in one ledger.</p>
+          <h1>Active Forensic Cases Ledger</h1>
+          <p>Complete custody ledger of GUARD investigations and FAIR dual-blind disputes.</p>
         </div>
-        <button
-          onClick={() => setShowDisputeForm(true)}
-          style={{ background: "var(--steel)", border: "none", color: "white", padding: "0.75rem 1.5rem", borderRadius: "var(--radius-sm)", cursor: "pointer", fontSize: "0.9rem", fontWeight: 600 }}
-        >
-          ⚖️ Open FAIR Dispute
-        </button>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <button
+            className="btn btn-gold btn-sm"
+            onClick={() => setShowDisputeForm(true)}
+          >
+            ⚖️ Open FAIR Dispute Case
+          </button>
+        </div>
       </div>
 
-      {showDisputeForm && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(11,27,54,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }} onClick={resetDisputeForm}>
-          <div className="premium-glass-card" style={{ width: "560px", maxWidth: "92vw", padding: "2rem", background: "var(--slate)" }} onClick={e => e.stopPropagation()}>
-            {!disputeResult ? (
-              <>
-                <h2 style={{ fontSize: "1.4rem", color: "var(--ink)", marginBottom: "0.5rem" }}>Open a Blind Dual Submission</h2>
-                <p style={{ color: "var(--ink-soft)", fontSize: "0.85rem", marginBottom: "1.5rem", lineHeight: 1.5 }}>
-                  Issues two codes — one per party. Each seals evidence independently, blind to the other's
-                  submission, straight into this case. Neither can see the other's artifacts.
-                </p>
-                <div style={{ marginBottom: "1rem" }}>
-                  <div className="label" style={{ marginBottom: "0.375rem" }}>Case title</div>
-                  <input className="input" value={disputeTitle} onChange={e => setDisputeTitle(e.target.value)}
-                    placeholder="e.g. Faculty complaint — Dept. of Physics" style={{ width: "100%" }} />
-                </div>
-                <div style={{ marginBottom: "1.5rem" }}>
-                  <div className="label" style={{ marginBottom: "0.375rem" }}>Scope shown to both parties</div>
-                  <textarea className="input" value={disputeScope} onChange={e => setDisputeScope(e.target.value)}
-                    placeholder="Events between 1 July and 11 August 2026" style={{ width: "100%", minHeight: "80px" }} />
-                </div>
-                {error && <div style={{ color: "var(--rejected)", fontSize: "0.85rem", marginBottom: "1rem" }}>{error}</div>}
-                <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
-                  <button onClick={resetDisputeForm} style={{ background: "transparent", border: "1px solid var(--rule)", padding: "0.6rem 1.25rem", borderRadius: "var(--radius-sm)", cursor: "pointer", color: "var(--ink-soft)" }}>Cancel</button>
-                  <button onClick={openDispute} disabled={creating || !disputeTitle || !disputeScope}
-                    style={{ background: "var(--steel)", border: "none", color: "white", padding: "0.6rem 1.5rem", borderRadius: "var(--radius-sm)", cursor: "pointer", fontWeight: 600, opacity: creating ? 0.6 : 1 }}>
-                    {creating ? "Opening..." : "Issue both codes →"}
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <h2 style={{ fontSize: "1.4rem", color: "var(--verified)", marginBottom: "0.5rem" }}>✓ Dispute opened — {disputeResult.case_reference}</h2>
-                <p style={{ color: "var(--ink-soft)", fontSize: "0.85rem", marginBottom: "1.5rem" }}>
-                  Send each code to its party through a separate, verified channel — never through the other party.
-                </p>
-                <div style={{ display: "grid", gap: "1rem", marginBottom: "1.5rem" }}>
-                  <div style={{ background: "var(--slate-hi)", border: "1px solid var(--rule)", borderRadius: "var(--radius-sm)", padding: "1rem" }}>
-                    <div style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.08em", color: "var(--text-faint)", marginBottom: "0.4rem" }}>COMPLAINANT CODE</div>
-                    <div className="mono" style={{ fontSize: "1.1rem", color: "var(--ink)", fontWeight: 600 }}>{disputeResult.complainant_code}</div>
-                  </div>
-                  <div style={{ background: "var(--slate-hi)", border: "1px solid var(--rule)", borderRadius: "var(--radius-sm)", padding: "1rem" }}>
-                    <div style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.08em", color: "var(--text-faint)", marginBottom: "0.4rem" }}>RESPONDENT CODE</div>
-                    <div className="mono" style={{ fontSize: "1.1rem", color: "var(--ink)", fontWeight: 600 }}>{disputeResult.respondent_code}</div>
-                  </div>
-                </div>
-                <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                  <button onClick={resetDisputeForm} style={{ background: "var(--ink)", border: "none", color: "white", padding: "0.6rem 1.5rem", borderRadius: "var(--radius-sm)", cursor: "pointer", fontWeight: 600 }}>Done</button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+      <div className="page-body">
+        {/* FAIR Dispute Modal */}
+        {showDisputeForm && (
+          <div className="modal-overlay" onClick={resetDisputeForm}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>⚖️ Initialize Blind Dual Submission Dispute</h2>
+                <button className="btn-signout" onClick={resetDisputeForm}>✕</button>
+              </div>
 
-      <div style={{ padding: "0 2rem" }}>
-
-        {loading ? (
-          <p style={{ color: "var(--text-faint)" }}>Loading cases...</p>
-        ) : cases.length === 0 ? (
-          <div className="premium-glass-card" style={{ textAlign: "center", padding: "4rem 1rem" }}>
-            <span style={{ fontSize: "2rem", marginBottom: "1rem", display: "block", color: "var(--text-faint)" }}>📁</span>
-            <p style={{ color: "var(--text-dim)", fontSize: "1.1rem" }}>No active cases found.</p>
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "1rem", paddingBottom: "2rem" }}>
-            {cases.map((c) => (
-              <Link key={c.id} href={`/cases/${c.id}`} style={{ textDecoration: "none", color: "inherit" }}>
-                <div className="premium-glass-card" style={{ display: "flex", alignItems: "center", gap: "1.5rem", padding: "1.5rem", transition: "border 0.2s, transform 0.2s", borderLeft: c.leads_pending > 0 ? "4px solid var(--pending)" : "4px solid var(--rule)" }} onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"} onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}>
-                  <div style={{ minWidth: "160px" }}>
-                    <div className="mono" style={{ color: "var(--steel)", fontSize: "1.05rem", fontWeight: 600, marginBottom: "0.25rem" }}>{c.reference}</div>
-                    <div style={{ fontSize: "0.75rem", color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>Opened {new Date(c.created_at).toLocaleDateString()}</div>
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
-                      <span style={{ fontWeight: 600, color: "var(--ink)", fontSize: "1.15rem" }}>{c.title}</span>
-                      <span style={{
-                        fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.05em", padding: "0.15rem 0.5rem", borderRadius: "4px",
-                        background: c.case_type === "fair" ? "rgba(180,134,58,0.12)" : "rgba(29,89,86,0.1)",
-                        color: c.case_type === "fair" ? "var(--pending)" : "var(--verified)",
-                      }}>
-                        {c.case_type === "fair" ? "FAIR" : "GUARD"}
-                      </span>
-                      {c.status === "awaiting_submissions" && (
-                        <span style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.05em", padding: "0.15rem 0.5rem", borderRadius: "4px", background: "var(--rejected-bg)", color: "var(--rejected)" }}>
-                          AWAITING SUBMISSIONS
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: "0.85rem", color: "var(--ink-soft)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      <span>📎</span> {c.evidence_count} secured artifacts
-                    </div>
-                  </div>
+              <div className="modal-body">
+                {!disputeResult ? (
                   <div>
-                    {c.leads_pending > 0 ? (
-                      <span style={{ background: "var(--pending-bg)", color: "var(--pending)", fontSize: "0.8rem", padding: "0.4rem 0.8rem", borderRadius: "100px", fontWeight: 700, display: "inline-block" }}>{c.leads_pending} LEADS PENDING</span>
-                    ) : (
-                      <span style={{ border: "1px solid rgba(29, 89, 86, 0.3)", color: "var(--verified)", fontSize: "0.75rem", padding: "0.3rem 0.8rem", borderRadius: "100px", fontWeight: 600, display: "inline-block" }}>✓ UP TO DATE</span>
-                    )}
+                    <p style={{ fontSize: "0.8125rem", color: "var(--gray-600)", marginBottom: "16px" }}>
+                      Issues two cryptographically isolated access codes — one per party. Each party seals digital evidence independently, completely blind to the other&apos;s submission.
+                    </p>
+
+                    <div className="form-group">
+                      <label className="form-label">
+                        Dispute Title / Department <span className="required">*</span>
+                      </label>
+                      <input
+                        className="input"
+                        value={disputeTitle}
+                        onChange={(e) => setDisputeTitle(e.target.value)}
+                        placeholder="e.g. Student grievance & cyber harassment inquiry"
+                        autoFocus
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">
+                        Case Scope (Shown Impartially to Both Parties) <span className="required">*</span>
+                      </label>
+                      <textarea
+                        className="input"
+                        value={disputeScope}
+                        onChange={(e) => setDisputeScope(e.target.value)}
+                        placeholder="e.g. Online communications, chat groups, and interactions occurring between 1 June and 15 August 2026."
+                      />
+                    </div>
+
+                    {error && <div className="alert alert-danger">{error}</div>}
                   </div>
-                </div>
-              </Link>
-            ))}
+                ) : (
+                  <div>
+                    <div className="alert alert-success" style={{ marginBottom: "16px" }}>
+                      ✓ <strong>Dispute Opened — Case Ref: {disputeResult.case_reference}</strong>
+                    </div>
+                    <p style={{ fontSize: "0.8125rem", color: "var(--gray-600)", marginBottom: "16px" }}>
+                      Deliver these codes to the respective parties via separate official channels.
+                    </p>
+
+                    <div style={{ display: "grid", gap: "12px", marginBottom: "16px" }}>
+                      <div style={{ background: "var(--gray-50)", border: "var(--border)", borderRadius: "var(--radius-sm)", padding: "12px" }}>
+                        <div style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--gray-600)", textTransform: "uppercase" }}>
+                          Complainant Access Code:
+                        </div>
+                        <div className="mono" style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--primary)", marginTop: "4px" }}>
+                          {disputeResult.complainant_code}
+                        </div>
+                      </div>
+
+                      <div style={{ background: "var(--gray-50)", border: "var(--border)", borderRadius: "var(--radius-sm)", padding: "12px" }}>
+                        <div style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--gray-600)", textTransform: "uppercase" }}>
+                          Respondent Access Code:
+                        </div>
+                        <div className="mono" style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--gold)", marginTop: "4px" }}>
+                          {disputeResult.respondent_code}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="modal-footer">
+                {!disputeResult ? (
+                  <>
+                    <button className="btn btn-ghost" onClick={resetDisputeForm}>
+                      Cancel
+                    </button>
+                    <button
+                      className="btn btn-primary"
+                      disabled={creating || !disputeTitle || !disputeScope}
+                      onClick={openDispute}
+                    >
+                      {creating ? "Generating Codes..." : "Issue Both Codes →"}
+                    </button>
+                  </>
+                ) : (
+                  <button className="btn btn-primary" onClick={resetDisputeForm}>
+                    Done & View Cases
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         )}
+
+        <div className="card">
+          <div className="card-header">
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", width: "100%", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <h2>Registered Case Ledgers</h2>
+                <span className="badge badge-info">{filtered.length} Cases</span>
+              </div>
+              <div style={{ width: "260px" }}>
+                <input
+                  className="input"
+                  placeholder="Search by case ref or title..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  style={{ fontSize: "0.8125rem", padding: "6px 10px" }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {loading ? (
+            <p style={{ color: "var(--gray-500)", padding: "24px" }}>Loading active case ledgers...</p>
+          ) : filtered.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "48px 24px" }}>
+              <div style={{ fontSize: "2rem", marginBottom: "8px" }}>📁</div>
+              <p style={{ fontWeight: 700, color: "var(--gray-900)" }}>No Cases Found</p>
+              <p style={{ fontSize: "0.8125rem", color: "var(--gray-500)" }}>
+                Accept an inbound citizen report or initialize a FAIR dispute case to begin forensic analysis.
+              </p>
+            </div>
+          ) : (
+            <div className="table-container">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Case Ref</th>
+                    <th>Investigation Title</th>
+                    <th>Case Type</th>
+                    <th>Status</th>
+                    <th>Artifacts</th>
+                    <th>Human Judgment Queue</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((c) => (
+                    <tr key={c.id} onClick={() => router.push(`/cases/${c.id}`)}>
+                      <td className="mono" style={{ fontWeight: 700, color: "var(--primary)" }}>
+                        {c.reference}
+                      </td>
+                      <td style={{ fontWeight: 600 }}>{c.title}</td>
+                      <td>
+                        <span className={`badge ${c.case_type === "fair" ? "badge-fair" : "badge-guard"}`}>
+                          {c.case_type === "fair" ? "FAIR Dispute" : "GUARD Single"}
+                        </span>
+                      </td>
+                      <td>
+                        {c.status === "awaiting_submissions" ? (
+                          <span className="badge badge-warning">Awaiting Submissions</span>
+                        ) : (
+                          <span className="badge badge-success">Active Workspace</span>
+                        )}
+                      </td>
+                      <td>
+                        <strong>{c.evidence_count} artifacts</strong>
+                      </td>
+                      <td>
+                        {c.leads_pending > 0 ? (
+                          <span className="badge badge-danger">{c.leads_pending} Leads Pending</span>
+                        ) : (
+                          <span className="badge badge-success">✓ Up to Date</span>
+                        )}
+                      </td>
+                      <td>
+                        <span className="btn btn-secondary btn-sm">
+                          Open Case →
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </Shell>
   );

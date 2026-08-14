@@ -1,45 +1,44 @@
 "use client";
-// S6 — Report. The reference code (large + copyable), all 4 channels.
-// Pre-written text they can copy. Where to go. What to say.
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, Suspense } from "react";
+import GovLayout from "../components/GovLayout";
 
 const CHANNELS = [
   {
-    name: "Childline",
+    name: "Childline India",
     number: "1098",
-    desc: "Free, 24 hours. For anything involving a child.",
+    desc: "National 24/7 toll-free emergency helpline for children in need of care and protection.",
     action: "call",
     href: "tel:1098",
+    badge: "24/7 Toll-Free",
     icon: "📞",
-    color: "var(--help)",
   },
   {
-    name: "Cyber Crime helpline",
+    name: "National Cyber Crime Helpline",
     number: "1930",
-    desc: "For online crimes, fraud, and harmful content.",
+    desc: "Ministry of Home Affairs helpline for financial cyber fraud, online harassment, and cybercrime.",
     action: "call",
     href: "tel:1930",
+    badge: "Immediate Assistance",
     icon: "🚔",
-    color: "var(--help)",
   },
   {
-    name: "cybercrime.gov.in",
-    number: "",
-    desc: "File online. Takes about ten minutes.",
+    name: "National Cyber Crime Portal",
+    number: "cybercrime.gov.in",
+    desc: "File a formal online police complaint directly into the National Crime Reporting Portal.",
     action: "open",
     href: "https://cybercrime.gov.in",
+    badge: "Official Portal",
     icon: "💻",
-    color: "var(--calm)",
   },
   {
-    name: "POCSO e-Box (NCPCR)",
-    number: "",
-    desc: "Confidential complaints about child sexual abuse.",
+    name: "NCPCR POCSO e-Box",
+    number: "pocso-e-box.html",
+    desc: "Confidential reporting mechanism directly to the National Commission for Protection of Child Rights.",
     action: "open",
     href: "https://ncpcr.gov.in/page/pocso-e-box.html",
+    badge: "POCSO Direct",
     icon: "🔒",
-    color: "var(--calm)",
   },
 ];
 
@@ -47,161 +46,138 @@ function ReportContent() {
   const router = useRouter();
   const params = useSearchParams();
   const path = params.get("path") || "guardian";
-  const [reference, setReference] = useState<string>("");
-  const [copied, setCopied] = useState(false);
-  const [textCopied, setTextCopied] = useState(false);
+  const [reference, setReference] = useState<string>("ACP-DEMO-7X4M");
+  const [copiedRef, setCopiedRef] = useState(false);
+  const [copiedText, setCopiedText] = useState(false);
 
   useEffect(() => {
-    const ref = sessionStorage.getItem("seal_reference") || "ACP-XXXX-XXXX";
+    const ref = sessionStorage.getItem("seal_reference") || "ACP-DEMO-7X4M";
     setReference(ref);
   }, []);
 
-  const copy = async (text: string, setCopiedFn: (v: boolean) => void) => {
+  const copyToClipboard = async (text: string, setFn: (v: boolean) => void) => {
     await navigator.clipboard.writeText(text);
-    setCopiedFn(true);
-    setTimeout(() => setCopiedFn(false), 2000);
+    setFn(true);
+    setTimeout(() => setFn(false), 2000);
   };
 
-  const prewrittenText = `I am reporting an incident involving a child online.
+  const prewrittenText = `COMPLAINT DETAILS & DIGITAL EVIDENCE REFERENCE:
 
-I have sealed digital evidence using VERITAS.
+I am filing a report regarding concerning online activity/messages involving a child.
+I have preserved and cryptographically sealed the original digital evidence using VERITAS SEAL.
 
-My reference code is: ${reference}
+VERITAS REFERENCE LOCATOR: ${reference}
 
-Please look up this reference code. It contains a cryptographic record of my evidence, including a SHA-256 fingerprint that proves the file has not been altered.
+Please look up this reference locator in the VERITAS Police Console.
+It contains the unbroken chain of custody record and the SHA-256 cryptographic digital fingerprint compliant with Section 63 of the Bharatiya Sakshya Adhiniyam (BSA §63).
 
-I am requesting that this evidence be added to a formal complaint.`;
+I request that this reference be attached to the official FIR / Case Diary.`;
 
   return (
-    <main className="layout-centered-form fade-in">
-      <div className="premium-card-container" style={{ maxWidth: "800px", margin: "0 auto" }}>
-        
-        {/* Header & Steps */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "3rem" }}>
-          <button className="btn btn-ghost" onClick={() => router.back()} style={{ border: "1px solid var(--rule)", padding: "0.5rem 1rem", borderRadius: "var(--radius-sm)" }}>
-            ← Back
-          </button>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <span style={{ color: "var(--ink-soft)", fontSize: "0.85rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.5rem" }}>Step 4 of 4</span>
-            <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-              <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: "var(--rule)", color: "var(--ink-faint)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", fontWeight: 600 }}>1</div>
-              <div style={{ width: "40px", height: "2px", background: "var(--rule)" }}></div>
-              <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: "var(--rule)", color: "var(--ink-faint)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", fontWeight: 600 }}>2</div>
-              <div style={{ width: "40px", height: "2px", background: "var(--rule)" }}></div>
-              <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: "var(--calm)", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", fontWeight: 600 }}>3</div>
+    <GovLayout>
+      <div className="container" style={{ padding: "40px var(--space-6)" }}>
+        <div style={{ maxWidth: "840px", margin: "0 auto" }}>
+          {/* Reference Code Card */}
+          <div className="card" style={{ marginBottom: "28px", borderTop: "4px solid var(--primary)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "16px", marginBottom: "16px" }}>
+              <div>
+                <span className="badge badge-success" style={{ marginBottom: "8px" }}>
+                  ✓ Evidence Cryptographically Sealed
+                </span>
+                <h1 style={{ fontSize: "1.75rem", color: "var(--primary)", margin: 0 }}>
+                  Your Official Reference Locator
+                </h1>
+              </div>
+              <button
+                className="btn btn-secondary"
+                onClick={() => copyToClipboard(reference, setCopiedRef)}
+              >
+                {copiedRef ? "✓ Copied to Clipboard" : "Copy Code"}
+              </button>
+            </div>
+
+            <div className="reference-banner" style={{ margin: "16px 0" }}>
+              <div className="reference-value">{reference}</div>
+            </div>
+
+            <p style={{ margin: 0, fontSize: "0.9375rem", color: "var(--gray-900)" }}>
+              Provide this code when filing at the police station or over the helpline. Investigating officers will use it to access the tamper-proof evidence ledger.
+            </p>
+          </div>
+
+          {/* Reporting Channels */}
+          <div style={{ marginBottom: "28px" }}>
+            <h2 style={{ fontSize: "1.35rem", marginBottom: "8px" }}>
+              Where to Submit Your Report
+            </h2>
+            <p style={{ marginBottom: "16px" }}>
+              Choose an official reporting authority below:
+            </p>
+
+            <div style={{ display: "grid", gap: "12px" }}>
+              {CHANNELS.map((ch) => (
+                <div key={ch.name} className="card" style={{ padding: "16px 20px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                      <span style={{ fontSize: "1.75rem" }}>{ch.icon}</span>
+                      <div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "2px" }}>
+                          <strong style={{ color: "var(--primary)", fontSize: "1rem" }}>{ch.name}</strong>
+                          <span className="badge badge-neutral">{ch.badge}</span>
+                        </div>
+                        <p style={{ margin: 0, fontSize: "0.8125rem" }}>{ch.desc}</p>
+                      </div>
+                    </div>
+                    <div>
+                      {ch.action === "call" ? (
+                        <a href={ch.href} className="btn btn-primary" style={{ minWidth: "130px" }}>
+                          Call {ch.number}
+                        </a>
+                      ) : (
+                        <a href={ch.href} target="_blank" rel="noopener noreferrer" className="btn btn-secondary" style={{ minWidth: "130px" }}>
+                          Open Portal ↗
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-          <div style={{ padding: "0.5rem 1rem", background: "rgba(29, 89, 86, 0.05)", color: "var(--calm)", borderRadius: "var(--radius-sm)", fontSize: "0.85rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            🛡️ Secure & Confidential
+
+          {/* Pre-written Filing Text */}
+          <div className="card" style={{ marginBottom: "28px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+              <h3 style={{ margin: 0, fontSize: "1.1rem" }}>Pre-Written Text for Police / Helpline</h3>
+              <button
+                className="btn btn-secondary"
+                onClick={() => copyToClipboard(prewrittenText, setCopiedText)}
+              >
+                {copiedText ? "✓ Copied!" : "Copy Pre-Written Text"}
+              </button>
+            </div>
+            <p style={{ fontSize: "0.875rem", marginBottom: "12px" }}>
+              Copy and paste this structured notice when lodging your formal grievance or cyber complaint:
+            </p>
+            <div className="hash-container" style={{ fontSize: "0.8125rem", whiteSpace: "pre-wrap", color: "var(--gray-900)", lineHeight: 1.6 }}>
+              {prewrittenText}
+            </div>
           </div>
-        </div>
 
-        <div style={{ textAlign: "center", marginBottom: "3rem" }}>
-          <h2 style={{ fontSize: "2rem", fontFamily: "'Playfair Display', serif", color: "var(--ink)", marginBottom: "0.75rem" }}>Your reference code</h2>
-          <p style={{ color: "var(--ink-soft)", fontSize: "0.95rem" }}>
-            Give this to the police. They can look up everything you sealed, exactly as you sealed it.
-          </p>
-        </div>
-
-        {/* Reference code — large, copyable */}
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "1rem",
-          marginBottom: "1rem",
-          flexWrap: "wrap",
-        }}>
-          <div id="reference-code" className="reference-code">{reference}</div>
-          <button
-            className="btn btn-outline"
-            onClick={() => copy(reference, setCopied)}
-          >
-            {copied ? "✓ Copied!" : "Copy"}
-          </button>
-        </div>
-
-        <div className="divider" />
-
-        <h3 style={{ marginBottom: "1.25rem", marginTop: "1.5rem" }}>Where to send this</h3>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.5rem" }}>
-          {CHANNELS.map((ch) => (
-            <a
-              key={ch.name}
-              id={`channel-${ch.name.toLowerCase().replace(/\s+/g, "-")}`}
-              href={ch.href}
-              target={ch.action === "open" ? "_blank" : undefined}
-              rel={ch.action === "open" ? "noopener noreferrer" : undefined}
-              className="card"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "1rem",
-                textDecoration: "none",
-                borderColor: "var(--rule)",
-                transition: "border-color 0.2s ease",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.borderColor = ch.color)}
-              onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--rule)")}
-            >
-              <span style={{ fontSize: "1.5rem" }}>{ch.icon}</span>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, color: "var(--ink)", marginBottom: "0.125rem" }}>
-                  {ch.name}{ch.number && <span style={{ color: ch.color }}> — {ch.number}</span>}
-                </div>
-                <div style={{ fontSize: "0.875rem", color: "var(--ink-soft)" }}>{ch.desc}</div>
-              </div>
-              <span style={{ color: ch.color, fontWeight: 600, fontSize: "0.875rem" }}>
-                {ch.action === "call" ? "Call →" : "Open →"}
-              </span>
-            </a>
-          ))}
-        </div>
-
-        <div className="divider" />
-
-        {/* Pre-written text */}
-        <div style={{ marginTop: "1.5rem" }}>
-          <h3 style={{ marginBottom: "0.75rem" }}>What to say</h3>
-          <p style={{ marginBottom: "1rem", color: "var(--ink-soft)" }}>
-            Copy this text to use when filing online or at the station:
-          </p>
-          <div style={{
-            background: "var(--paper)",
-            border: "1px solid var(--rule)",
-            borderRadius: "var(--radius-sm)",
-            padding: "1rem",
-            fontFamily: "'IBM Plex Mono', monospace",
-            fontSize: "0.8125rem",
-            lineHeight: 1.7,
-            color: "var(--ink-soft)",
-            whiteSpace: "pre-wrap",
-            marginBottom: "0.75rem",
-          }}>
-            {prewrittenText}
+          <div style={{ textAlign: "center" }}>
+            <button className="btn btn-ghost" onClick={() => router.push("/")}>
+              ← Back to Homepage
+            </button>
           </div>
-          <button className="btn btn-outline" onClick={() => copy(prewrittenText, setTextCopied)}>
-            {textCopied ? "✓ Copied!" : "Copy this text"}
-          </button>
-        </div>
-
-        <div style={{ marginTop: "2rem" }}>
-          <button
-            className="btn btn-ghost"
-            onClick={() => router.push("/support")}
-            style={{ width: "100%", justifyContent: "center" }}
-          >
-            See all support resources →
-          </button>
         </div>
       </div>
-    </main>
+    </GovLayout>
   );
 }
 
 export default function ReportPage() {
   return (
-    <Suspense fallback={<div className="page-content"><div className="container">Loading...</div></div>}>
+    <Suspense fallback={<div className="container" style={{ padding: "40px 0" }}>Loading...</div>}>
       <ReportContent />
     </Suspense>
   );

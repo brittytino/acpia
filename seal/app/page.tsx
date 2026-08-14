@@ -1,172 +1,194 @@
 "use client";
-// S1 — Landing. One sentence. Three cards. No marketing. No sign-up.
-// A person in distress gets three doors and a phone number.
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import GovLayout from "./components/GovLayout";
 
-export default function LandingPage() {
+export default function HomePage() {
   const router = useRouter();
 
-  const paths = [
+  const serviceOptions = [
     {
       id: "guardian",
-      title: "Someone is messaging a child in a way that worries me",
-      desc: "A parent, teacher, or guardian who has seen concerning messages.",
       icon: "🛡️",
+      title: "Someone is messaging a child in a way that worries me",
+      desc: "For parents, teachers, and guardians who have noticed suspicious online communication or predatory behavior.",
+      badge: "Guardian Flow",
     },
     {
       id: "self",
-      title: "I'm worried about how someone is treating me",
-      desc: "You are the person receiving these messages.",
-      icon: "💙",
+      icon: "🤝",
+      title: "I'm worried about how someone is treating me online",
+      desc: "For individuals experiencing cyberstalking, harassment, intimidation, or coercion on digital platforms.",
+      badge: "Direct Report",
     },
     {
       id: "illegal_material",
-      title: "I was sent something illegal",
-      desc: "You received material you did not ask for and that you know is illegal.",
       icon: "⚠️",
+      title: "I was sent or encountered unlawful digital material",
+      desc: "Preserve a cryptographic hash-only record of unsolicited illegal material without storing or propagating the file.",
+      badge: "Zero-Storage Flow",
     },
   ];
 
-  const disputeCard = {
-    id: "dispute",
-    title: "I have a code — a complaint or dispute involves me",
-    desc: "You received a code by SMS, email, or letter, as either party to a case.",
-    icon: "⚖️",
-  };
-
   return (
-    <main className="layout-split fade-in">
-      {/* LEFT: Anchor Image Placeholder */}
-      <div className="layout-anchor">
-        <div className="layout-anchor-placeholder" style={{ background: "var(--ink)" }}></div>
-        <div className="layout-anchor-content" style={{ color: "white", paddingBottom: "2rem" }}>
-          <h2 style={{ fontSize: "2.5rem", fontWeight: 700, marginBottom: "1rem", lineHeight: 1.1 }}>
-            Your report can protect<br/>a child and prevent harm.
-          </h2>
-          <p style={{ fontSize: "1.1rem", opacity: 0.9, maxWidth: "400px", marginBottom: "3rem" }}>
-            VERITAS SEAL helps you securely report concerns and connect with the right authorities.
-          </p>
-          
-          <div style={{ display: "flex", gap: "2rem", marginBottom: "3rem" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-              <div style={{ width: "48px", height: "48px", borderRadius: "50%", border: "1px solid rgba(255,255,255,0.3)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                🔒
-              </div>
-              <div>
-                <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>Secure</div>
-                <div style={{ fontSize: "0.8rem", opacity: 0.8 }}>End-to-end encryption</div>
-              </div>
+    <GovLayout>
+      {/* ── Hero Banner ── */}
+      <section style={{ background: "var(--primary-light)", borderBottom: "1px solid var(--gray-200)", padding: "48px 0" }}>
+        <div className="container">
+          <div style={{ maxWidth: "760px" }}>
+            <span className="badge badge-gold" style={{ marginBottom: "12px" }}>
+              Official Digital Evidence Preservation
+            </span>
+            <h1 style={{ fontSize: "2.25rem", color: "var(--primary)", marginBottom: "12px" }}>
+              Something happened online. Let&apos;s make sure it counts.
+            </h1>
+            <p style={{ fontSize: "1.125rem", color: "var(--gray-900)", marginBottom: "28px", lineHeight: 1.6 }}>
+              VERITAS SEAL helps securely preserve digital evidence and connect people with the appropriate reporting and investigation process.
+            </p>
+            <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+              <button
+                className="btn btn-primary btn-lg"
+                onClick={() => router.push("/guide?path=guardian")}
+              >
+                Report an Incident →
+              </button>
+              <button
+                className="btn btn-secondary btn-lg"
+                onClick={() => router.push("/track")}
+              >
+                Track a Report
+              </button>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-              <div style={{ width: "48px", height: "48px", borderRadius: "50%", border: "1px solid rgba(255,255,255,0.3)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                🛡️
-              </div>
-              <div>
-                <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>Trusted</div>
-                <div style={{ fontSize: "0.8rem", opacity: 0.8 }}>Built for child safety</div>
-              </div>
-            </div>
-          </div>
-          
-          <div style={{ fontSize: "0.85rem", opacity: 0.7, borderTop: "1px solid rgba(255,255,255,0.2)", paddingTop: "1.5rem" }}>
-            🛡️ VERITAS SEAL is a non-emergency reporting system.<br/>
-            If a child is in immediate danger, call 1098 or 112.
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* RIGHT: Content / Forms */}
-      <div className="layout-content">
-        <div style={{ maxWidth: "600px", width: "100%" }}>
-          <div style={{ textAlign: "center", marginBottom: "3rem" }}>
-            <h1 style={{ color: "var(--ink)", marginBottom: "0.5rem", fontSize: "2.25rem", fontFamily: "'Playfair Display', serif" }}>
-              Something happened online.
-            </h1>
-            <h1 style={{ color: "var(--seal)", fontSize: "2.25rem", fontFamily: "'Playfair Display', serif" }}>
-              Let's make sure it counts.
-            </h1>
-            <p style={{ marginTop: "1.5rem", fontSize: "0.95rem", color: "var(--ink-soft)", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}>
-              🔒 Three minutes. Nothing you share leaves your device unless you choose to send it.
-            </p>
+      {/* ── Service Options Grid ── */}
+      <section style={{ padding: "48px 0" }}>
+        <div className="container">
+          <div style={{ marginBottom: "28px" }}>
+            <h2>How can we help you?</h2>
+            <p>Select the option that best reflects your current situation.</p>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem", marginBottom: "3rem" }}>
-            {paths.map((path) => (
+          <div style={{ display: "grid", gap: "16px", marginBottom: "32px" }}>
+            {serviceOptions.map((opt) => (
               <button
-                key={path.id}
-                id={`path-${path.id}`}
-                className="card card-interactive"
-                onClick={() => router.push(`/guide?path=${path.id}`)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "1.5rem",
-                  textAlign: "left",
-                  width: "100%",
-                  border: "none",
-                  padding: "1.5rem 2rem",
-                  background: path.id === "guardian" ? "rgba(29, 89, 86, 0.04)" : path.id === "self" ? "rgba(158, 57, 53, 0.04)" : "rgba(180, 134, 58, 0.04)"
-                }}
+                key={opt.id}
+                className="service-card"
+                onClick={() => router.push(`/guide?path=${opt.id}`)}
+                aria-label={opt.title}
               >
-                <div style={{ 
-                  width: "56px", 
-                  height: "56px", 
-                  borderRadius: "50%", 
-                  background: "var(--card)", 
-                  display: "flex", 
-                  alignItems: "center", 
-                  justifyContent: "center", 
-                  fontSize: "1.5rem",
-                  boxShadow: "var(--shadow-sm)",
-                  border: "1px solid var(--rule)"
-                }}>
-                  {path.icon}
-                </div>
+                <div className="service-card-icon">{opt.icon}</div>
                 <div style={{ flex: 1 }}>
-                  <div style={{
-                    fontWeight: 600,
-                    fontSize: "1.1rem",
-                    color: "var(--ink)",
-                    marginBottom: "0.25rem"
-                  }}>
-                    {path.title}
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                    <h4 style={{ margin: 0 }}>{opt.title}</h4>
+                    <span className="badge badge-info">{opt.badge}</span>
                   </div>
-                  <div style={{ fontSize: "0.9rem", color: "var(--ink-soft)" }}>
-                    {path.desc}
-                  </div>
+                  <p style={{ margin: 0, fontSize: "0.875rem" }}>{opt.desc}</p>
                 </div>
-                <span style={{ color: "var(--ink-soft)", fontSize: "1.5rem", opacity: 0.5 }}>→</span>
+                <span style={{ color: "var(--secondary)", fontWeight: 700, fontSize: "1.25rem" }}>→</span>
               </button>
             ))}
 
             <button
-              id="path-dispute"
-              className="card card-interactive"
+              className="service-card"
               onClick={() => router.push("/dispute")}
-              style={{
-                display: "flex", alignItems: "center", gap: "1.5rem", textAlign: "left",
-                width: "100%", border: "1px dashed var(--rule)", padding: "1.25rem 2rem",
-                background: "rgba(11,27,54,0.02)",
-              }}
+              style={{ borderStyle: "dashed", borderColor: "var(--gold)" }}
+              aria-label="I have a case dispute code"
             >
-              <div style={{ width: "48px", height: "48px", borderRadius: "50%", background: "var(--card)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.3rem", boxShadow: "var(--shadow-sm)", border: "1px solid var(--rule)" }}>
-                {disputeCard.icon}
-              </div>
+              <div className="service-card-icon" style={{ background: "var(--gold-light)", color: "var(--gold)" }}>⚖️</div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, fontSize: "1rem", color: "var(--ink)", marginBottom: "0.2rem" }}>{disputeCard.title}</div>
-                <div style={{ fontSize: "0.85rem", color: "var(--ink-soft)" }}>{disputeCard.desc}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                  <h4 style={{ margin: 0 }}>I have a code — a complaint or dispute involves me</h4>
+                  <span className="badge badge-gold">Respondent Flow</span>
+                </div>
+                <p style={{ margin: 0, fontSize: "0.875rem" }}>
+                  Enter your assigned secure verification code to submit your account and digital evidence under Blind Dual Submission protections.
+                </p>
               </div>
-              <span style={{ color: "var(--ink-soft)", fontSize: "1.3rem", opacity: 0.5 }}>→</span>
+              <span style={{ color: "var(--gold)", fontWeight: 700, fontSize: "1.25rem" }}>→</span>
             </button>
           </div>
+        </div>
+      </section>
 
-          <div style={{ textAlign: "center", borderTop: "1px solid var(--rule)", paddingTop: "2rem" }}>
-            <p style={{ color: "var(--ink-soft)", fontSize: "0.9rem" }}>
-              🛡️ Your safety is important to us. Reports are reviewed by authorized personnel only.
+      {/* ── How VERITAS Protects Evidence ── */}
+      <section style={{ background: "var(--white)", borderTop: "var(--border)", borderBottom: "var(--border)", padding: "48px 0" }}>
+        <div className="container">
+          <div style={{ textAlign: "center", maxWidth: "700px", margin: "0 auto 36px" }}>
+            <h2>How VERITAS protects your evidence</h2>
+            <p>
+              Evidence integrity is preserved through an unbroken cryptographic chain compliant with Indian digital evidence standards (BSA §63).
             </p>
           </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "20px" }}>
+            {[
+              {
+                step: "1",
+                title: "Add your file",
+                desc: "Select screenshots, chat exports, or multimedia files directly from your device.",
+              },
+              {
+                step: "2",
+                title: "Digital fingerprint",
+                desc: "A unique SHA-256 digital fingerprint is computed entirely on your device in your browser memory.",
+              },
+              {
+                step: "3",
+                title: "Cryptographic Seal",
+                desc: "The timestamp and hash are locked into the ledger. Any future alteration will break verification.",
+              },
+              {
+                step: "4",
+                title: "Vault Certificate",
+                desc: "Receive an official verification certificate and reference code to submit to law enforcement.",
+              },
+              {
+                step: "5",
+                title: "Track Report",
+                desc: "Monitor case triage, forensic verification, and investigating officer updates in real time.",
+              },
+            ].map((item) => (
+              <div key={item.step} className="card card-gold-accent" style={{ textAlign: "center" }}>
+                <div style={{
+                  width: "36px", height: "36px", borderRadius: "50%",
+                  background: "var(--primary)", color: "var(--white)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  margin: "0 auto 12px", fontWeight: 900, fontSize: "1rem"
+                }}>
+                  {item.step}
+                </div>
+                <h4 style={{ fontSize: "1rem", marginBottom: "8px" }}>{item.title}</h4>
+                <p style={{ fontSize: "0.8125rem", margin: 0 }}>{item.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="alert alert-info" style={{ marginTop: "32px" }}>
+            <strong>What is a digital fingerprint?</strong>
+            <br />
+            A digital fingerprint (SHA-256 cryptographic hash) is an immutable 64-character mathematical signature.
+            If even one pixel or character in a file changes after sealing, the fingerprint alters completely.
+            This mathematically proves to courts and investigators that the evidence has not been tampered with.
+            <strong> Digital fingerprinting is not encryption</strong> — your file content remains accessible to you.
+          </div>
         </div>
-      </div>
-    </main>
+      </section>
+
+      {/* ── Emergency Notice ── */}
+      <section style={{ padding: "36px 0" }}>
+        <div className="container">
+          <div className="alert alert-warning">
+            <strong>Non-Emergency Reporting Notice:</strong>
+            <br />
+            VERITAS SEAL is a digital evidence preservation portal. If you or a minor is currently in immediate physical danger,
+            contact emergency services without delay: <a href="tel:1098" style={{ fontWeight: 700 }}>Childline 1098</a> or{" "}
+            <a href="tel:112" style={{ fontWeight: 700 }}>National Emergency 112</a>.
+          </div>
+        </div>
+      </section>
+    </GovLayout>
   );
 }

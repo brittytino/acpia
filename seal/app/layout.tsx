@@ -2,27 +2,29 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "VERITAS Seal — Preserve Your Evidence",
-  description: "Safely preserve and seal digital evidence. Your file never leaves your device.",
-  keywords: ["child protection", "evidence", "cybercrime", "India", "POCSO"],
+  title: "VERITAS SEAL — Digital Evidence Preservation System",
+  description: "Secure, non-emergency digital evidence preservation and reporting system compliant with BSA §63.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.png", type: "image/png", sizes: "32x32" },
+      { url: "/icon-192.png", type: "image/png", sizes: "192x192" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>
-        {/* Helpline banner — always visible, never buried */}
-        <header className="helpline-banner">
-          <span style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontSize: "0.875rem", color: "var(--ink-soft)" }}>
-            VERITAS Seal
-          </span>
-          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-            <span style={{ fontSize: "0.8rem", color: "var(--ink-faint)" }}>Need help now?</span>
-            <a href="tel:1098" className="helpline-number">📞 Childline 1098</a>
-          </div>
-        </header>
-        {children}
-      </body>
+      <head>
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/icon.png" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+      </head>
+      <body>{children}</body>
     </html>
   );
 }

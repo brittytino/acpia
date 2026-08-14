@@ -24,31 +24,46 @@ export function PairPanel({ caseId }: { caseId: string }) {
 
   if (!pairing) {
     return (
-      <div className="premium-glass-card" style={{ padding: "1.5rem", textAlign: "center" }}>
-        <div style={{ fontWeight: 600, color: "var(--ink)", marginBottom: "0.5rem" }}>📱 Add evidence from a phone</div>
-        <p style={{ fontSize: "0.8rem", color: "var(--ink-soft)", marginBottom: "1rem" }}>
-          No cable, no account. Scan a QR code and seal directly from the device, live.
+      <div className="card" style={{ textAlign: "center", padding: "20px" }}>
+        <div style={{ fontWeight: 700, color: "var(--primary)", fontSize: "0.9375rem", marginBottom: "4px" }}>
+          📱 Direct Mobile Device Sealing
+        </div>
+        <p style={{ fontSize: "0.75rem", color: "var(--gray-600)", marginBottom: "16px" }}>
+          Generate a time-limited pairing session. Complainants or officers scan to hash evidence directly on mobile without cables.
         </p>
-        <button onClick={createPairing} disabled={loading}
-          style={{ background: "var(--steel)", border: "none", color: "white", padding: "0.6rem 1.25rem", borderRadius: "var(--radius-sm)", cursor: "pointer", fontWeight: 600 }}>
-          {loading ? "Generating..." : "Generate QR code"}
+        <button
+          className="btn btn-secondary btn-block btn-sm"
+          onClick={createPairing}
+          disabled={loading}
+        >
+          {loading ? "Generating Session..." : "Generate Pairing QR Code"}
         </button>
       </div>
     );
   }
 
   return (
-    <div className="premium-glass-card" style={{ padding: "1.5rem", textAlign: "center" }}>
-      <div style={{ display: "inline-block", background: "white", padding: "0.75rem", borderRadius: "var(--radius-sm)", marginBottom: "0.75rem" }}>
-        <QRCode value={pairing.url} size={160} />
+    <div className="card card-gold-accent" style={{ textAlign: "center", padding: "20px" }}>
+      <div style={{ fontWeight: 700, color: "var(--primary)", fontSize: "0.875rem", marginBottom: "12px" }}>
+        Scan with Mobile Camera
       </div>
-      <p className="mono" style={{ fontSize: "0.7rem", color: "var(--text-faint)", wordBreak: "break-all" }}>{pairing.url}</p>
-      <p style={{ fontSize: "0.75rem", color: "var(--ink-soft)", marginTop: "0.5rem" }}>
-        Expires in {Math.round(pairing.expires_in / 60)} minutes
+      <div style={{ display: "inline-block", background: "white", padding: "12px", borderRadius: "var(--radius-sm)", border: "var(--border)", marginBottom: "12px" }}>
+        <QRCode value={pairing.url} size={150} />
+      </div>
+      <p className="mono" style={{ fontSize: "0.6875rem", color: "var(--gray-500)", wordBreak: "break-all", marginBottom: "6px" }}>
+        {pairing.url}
       </p>
-      <button onClick={() => setPairing(null)} style={{ marginTop: "0.75rem", background: "transparent", border: "1px solid var(--rule)", color: "var(--ink-soft)", padding: "0.4rem 0.9rem", borderRadius: "var(--radius-sm)", cursor: "pointer", fontSize: "0.8rem" }}>
-        New code
-      </button>
+      <div className="badge badge-warning" style={{ fontSize: "0.6875rem", marginBottom: "12px" }}>
+        Session Expires in {Math.round(pairing.expires_in / 60)} min
+      </div>
+      <div>
+        <button
+          className="btn btn-ghost btn-sm"
+          onClick={() => setPairing(null)}
+        >
+          Close / New QR Code
+        </button>
+      </div>
     </div>
   );
 }

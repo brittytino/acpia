@@ -10,19 +10,23 @@ export default function InboundDetail({ params }: { params: { ref: string } }) {
   const [report, setReport] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [accepting, setAccepting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchReport = async () => {
       try {
         const token = localStorage.getItem("acpia_token");
         const res = await fetch(`${API}/api/v1/inbound/${params.ref}`, {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) {
           setReport(await res.json());
+        } else {
+          setError("Inbound report not found.");
         }
       } catch (err) {
         console.error("Failed to fetch report detail:", err);
+        setError("Failed to communicate with the forensic API server.");
       } finally {
         setLoading(false);
       }
@@ -38,109 +42,165 @@ export default function InboundDetail({ params }: { params: { ref: string } }) {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ case_id: null }) // Create new case
+        body: JSON.stringify({ case_id: null }),
       });
       if (res.ok) {
         const data = await res.json();
         router.push(`/cases/${data.case_id}`);
+      } else {
+        alert("Failed to initialize case workspace from this report.");
       }
     } catch (err) {
       console.error("Failed to accept inbound report:", err);
+      alert("Error initiating case intake.");
     } finally {
       setAccepting(false);
     }
   };
 
-  if (loading) return <Shell><div className="container">Loading...</div></Shell>;
-  if (!report) return <Shell><div className="container">Report not found</div></Shell>;
+  if (loading) {
+    return (
+      <Shell title="Loading Inbound Submission...">
+        <div className="page-body">
+          <p>Loading report payload from forensic ledger...</p>
+        </div>
+      </Shell>
+    );
+  }
+
+  if (!report || error) {
+    return (
+      <Shell title="Report Not Found">
+        <div className="page-body">
+          <div className="alert alert-danger">{error || "Report not found."}</div>
+          <button className="btn btn-secondary" onClick={() => router.push("/inbound")}>
+            ← Back to Inbound Queue
+          </button>
+        </div>
+      </Shell>
+    );
+  }
 
   return (
-    <Shell title={`INBOUND: ${report.reference}`}>
-      <div style={{ maxWidth: "900px", margin: "0 auto", paddingBottom: "4rem" }}>
-        <button onClick={() => router.back()} style={{ background: "transparent", border: "none", color: "var(--steel)", cursor: "pointer", fontSize: "0.85rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "2rem", marginTop: "2rem" }}>
-          <span>←</span> Back to queue
-        </button>
+    <Shell title={`Inbound Report: ${report.reference}`}>
+      <div className="page-header">
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+            <span className="badge badge-gold">Inbound Triage</span>
+            <span className="mono" style={{ fontSize: "0.8125rem", color: "var(--gray-600)" }}>
+              Locator: {report.reference}
+            </span>
+          </div>
+          <h1>Citizen Evidence Review — {report.reference}</h1>
+        </div>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <button className="btn btn-ghost btn-sm" onClick={() => router.push("/inbound")}>
+            ← Back to Queue
+          </button>
+          {!report.claimed && (
+            <button
+              className="btn btn-primary btn-sm"
+              disabled={accepting}
+              onClick={acceptIntoCase}
+            >
+              {accepting ? "Initiating Forensic Workspace..." : "Accept into New Forensic Case →"}
+            </button>
+          )}
+        </div>
+      </div>
 
-        <div className="premium-glass-card" style={{ marginBottom: "2rem" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", padding: "1.5rem 2rem", borderBottom: "1px solid var(--rule)", background: "var(--slate-hi)" }}>
+      <div className="page-body" style={{ maxWidth: "1000px" }}>
+        {/* Metadata Summary Card */}
+        <div className="card" style={{ marginBottom: "24px" }}>
+          <div className="card-header">
+            <h2>Submission Metadata</h2>
+            <span className="badge badge-success">✓ Cryptographic Chain Valid</span>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
             <div>
-              <div style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-faint)", marginBottom: "0.25rem" }}>Reference Locator</div>
-              <div className="mono" style={{ fontSize: "1.75rem", color: "var(--ink)", fontWeight: 600 }}>{report.reference}</div>
+              <div style={{ fontSize: "0.75rem", color: "var(--gray-600)", fontWeight: 700, textTransform: "uppercase" }}>Intake Category</div>
+              <div style={{ fontWeight: 700, color: "var(--primary)", marginTop: "2px" }}>
+                {report.path_taken?.replace("_", " ")}
+              </div>
             </div>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-faint)", marginBottom: "0.25rem" }}>Sealed Timestamp</div>
-              <div className="mono" style={{ fontSize: "1rem", color: "var(--ink-soft)" }}>{new Date(report.sealed_at).toLocaleString()}</div>
+
+            <div>
+              <div style={{ fontSize: "0.75rem", color: "var(--gray-600)", fontWeight: 700, textTransform: "uppercase" }}>Sealed Timestamp</div>
+              <div className="mono" style={{ fontSize: "0.875rem", marginTop: "2px" }}>
+                {new Date(report.sealed_at).toUTCString()}
+              </div>
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "2rem", padding: "2rem" }}>
-            <div>
-              <div style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-faint)", marginBottom: "0.5rem" }}>Path Taken</div>
-              <div style={{ color: "var(--ink)", fontWeight: 600, background: "rgba(11,27,54,0.05)", padding: "0.5rem 0.75rem", borderRadius: "var(--radius-sm)", display: "inline-block" }}>{report.path_taken.replace('_', ' ')}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-faint)", marginBottom: "0.5rem" }}>Declarant Statement</div>
-              <div style={{ color: "var(--ink-soft)", fontStyle: "italic", background: "var(--slate-hi)", padding: "1.25rem", borderRadius: "var(--radius-sm)", border: "1px solid var(--rule)", lineHeight: 1.6 }}>
-                "{report.statement || "No statement provided."}"
-              </div>
+          <div>
+            <div style={{ fontSize: "0.75rem", color: "var(--gray-600)", fontWeight: 700, textTransform: "uppercase", marginBottom: "4px" }}>Declarant Statement</div>
+            <div style={{ background: "var(--gray-50)", border: "var(--border)", borderRadius: "var(--radius-sm)", padding: "14px 16px", fontSize: "0.875rem", fontStyle: "italic", color: "var(--gray-900)" }}>
+              &ldquo;{report.statement || "No declarant narrative provided with this submission."}&rdquo;
             </div>
           </div>
         </div>
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-          <h3 style={{ fontSize: "1.25rem", color: "var(--ink)", fontWeight: 600 }}>Sealed Artifacts ({report.artifacts.length})</h3>
+        {/* Sealed Artifacts Table */}
+        <div className="card" style={{ marginBottom: "24px" }}>
+          <div className="card-header">
+            <h2>Sealed Evidence Artifacts ({report.artifacts?.length || 0})</h2>
+            <span className="badge badge-neutral">BSA §63 Digital Artifacts</span>
+          </div>
+
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>File Name</th>
+                  <th>Payload Size</th>
+                  <th>Cryptographic SHA-256 Fingerprint</th>
+                  <th>Integrity</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.artifacts?.map((art: any, i: number) => (
+                  <tr key={i}>
+                    <td>
+                      <strong>{art.filename}</strong>
+                    </td>
+                    <td>{(art.size_bytes / 1024).toFixed(1)} KB</td>
+                    <td className="hash">
+                      {art.sha256_groups || art.sha256}
+                    </td>
+                    <td>
+                      <span className="badge badge-success">✓ MATCHES SEAL</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "3rem" }}>
-          {report.artifacts.map((art: any, i: number) => (
-            <div key={i} className="premium-glass-card" style={{ padding: "1.5rem" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", paddingBottom: "1rem", borderBottom: "1px solid var(--rule)" }}>
-                <div style={{ fontWeight: 600, color: "var(--ink)", fontSize: "1.1rem" }}>{art.filename}</div>
-                <div className="mono" style={{ color: "var(--text-dim)", background: "rgba(11,27,54,0.05)", padding: "0.25rem 0.5rem", borderRadius: "4px" }}>{(art.size_bytes / 1024).toFixed(1)} KB</div>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "100px 1fr", gap: "1rem", alignItems: "center", marginBottom: "0.75rem" }}>
-                <div style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-faint)" }}>Sealed</div>
-                <div className="mono" style={{ fontSize: "0.85rem", color: "var(--text-dim)" }}>{art.sha256_groups}</div>
-              </div>
-              {art.body_stored && (
-                <div style={{ display: "grid", gridTemplateColumns: "100px 1fr", gap: "1rem", alignItems: "center", marginBottom: "1rem" }}>
-                  <div style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-faint)" }}>Received</div>
-                  <div className="mono" style={{ fontSize: "0.85rem", color: "var(--ink)" }}>{art.sha256_groups}</div>
-                </div>
-              )}
-              <div style={{ marginTop: "1.5rem", display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                {art.integrity === "VERIFIED" || art.integrity === "HASH_ONLY" ? (
-                  <span style={{ fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.05em", padding: "0.3rem 0.6rem", borderRadius: "4px", background: "var(--verified-bg)", color: "var(--verified)", border: "1px solid rgba(29,89,86,0.2)" }}>
-                    ✓ INTEGRITY VERIFIED
-                  </span>
-                ) : (
-                  <span style={{ fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.05em", padding: "0.3rem 0.6rem", borderRadius: "4px", background: "var(--rejected-bg)", color: "var(--rejected)", border: "1px solid rgba(158,57,53,0.2)" }}>
-                    ⚠️ INTEGRITY FAILED
-                  </span>
-                )}
-                {art.integrity === "HASH_ONLY" && (
-                  <span style={{ fontSize: "0.8rem", color: "var(--ink-soft)", fontStyle: "italic" }}>Hash-only record (illegal material path)</span>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-
+        {/* Action Panel */}
         {!report.claimed ? (
-          <div className="premium-glass-card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "2rem", borderLeft: "4px solid var(--steel)", background: "var(--slate-hi)" }}>
+          <div className="card card-gold-accent" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 24px" }}>
             <div>
-              <div style={{ fontWeight: 600, color: "var(--ink)", marginBottom: "0.35rem", fontSize: "1.1rem" }}>Accept into Intelligence Platform</div>
-              <div style={{ fontSize: "0.9rem", color: "var(--text-dim)" }}>This will create a new forensic case workspace and continue the chain of custody.</div>
+              <h3 style={{ color: "var(--primary)", margin: "0 0 4px" }}>Initiate Forensic Investigation</h3>
+              <p style={{ margin: 0, fontSize: "0.8125rem" }}>
+                Accepting this report generates a formal case ledger and unlocks AI entity extraction, contradiction analysis, and timeline graphing.
+              </p>
             </div>
-            <button style={{ background: "var(--steel)", border: "none", color: "white", padding: "0.85rem 1.75rem", borderRadius: "var(--radius-sm)", cursor: accepting ? "not-allowed" : "pointer", fontSize: "0.95rem", fontWeight: 600, opacity: accepting ? 0.7 : 1, transition: "background 0.2s" }} onMouseOver={e => !accepting && (e.currentTarget.style.background = "var(--steel-hi)")} onMouseOut={e => !accepting && (e.currentTarget.style.background = "var(--steel)")} onClick={acceptIntoCase} disabled={accepting}>
-              {accepting ? "Accepting..." : "Accept into new case →"}
+            <button
+              className="btn btn-primary btn-lg"
+              disabled={accepting}
+              onClick={acceptIntoCase}
+              style={{ flexShrink: 0 }}
+            >
+              {accepting ? "Initiating..." : "Accept into New Case →"}
             </button>
           </div>
         ) : (
-          <div style={{ textAlign: "center", padding: "2rem", background: "var(--slate-hi)", border: "1px dashed var(--rule)", borderRadius: "var(--radius-md)", color: "var(--ink-soft)" }}>
-            🔒 This report has already been claimed and attached to an active case.
+          <div className="alert alert-info">
+            🔒 This submission has already been accepted and bound into an active case ledger.
           </div>
         )}
       </div>

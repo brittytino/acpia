@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-export function Shell({ children, title = "VERITAS CONSOLE" }: { children: React.ReactNode; title?: string }) {
+export function Shell({ children, title }: { children: React.ReactNode; title?: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<{ username: string; role: string } | null>(null);
@@ -25,53 +25,93 @@ export function Shell({ children, title = "VERITAS CONSOLE" }: { children: React
 
   if (!user) return null;
 
+  const navGroups = [
+    {
+      group: "Operational Triage",
+      items: [
+        { href: "/dashboard", label: "Dashboard", icon: "📊" },
+        { href: "/inbound", label: "Inbound Reports", icon: "📥" },
+      ],
+    },
+    {
+      group: "Forensic Cases",
+      items: [
+        { href: "/cases", label: "Active Cases", icon: "📁" },
+      ],
+    },
+    {
+      group: "Supervision & Audit",
+      items: [
+        { href: "/auditor", label: "Custody Auditor", icon: "⚖️" },
+      ],
+    },
+  ];
+
   return (
     <div className="app-shell">
       {/* Topbar */}
-      <header className="topbar" style={{ background: "var(--card)", backdropFilter: "blur(12px)", borderBottom: "1px solid var(--rule)" }}>
-        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "0.875rem", fontWeight: 600, letterSpacing: "0.1em", color: "var(--ink)", display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          <span style={{ fontSize: "1.25rem", color: "var(--calm)" }}>🛡️</span>
-          {title}
-        </div>
-        <div style={{ flex: 1 }} />
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem", fontSize: "0.875rem", color: "var(--text-dim)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "var(--verified)", boxShadow: "0 0 8px rgba(29, 89, 86, 0.4)" }}></div>
-            <span>Connected</span>
+      <header className="topbar">
+        <Link href="/dashboard" className="topbar-brand">
+          <img
+            src="/logo.png"
+            alt="VERITAS Logo"
+            className="topbar-logo-img"
+          />
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <span className="topbar-title">VERITAS CONSOLE</span>
+            <span className="topbar-badge">v6.0</span>
           </div>
-          <span style={{ color: "var(--rule)" }}>|</span>
-          <span style={{ color: "var(--ink)", fontWeight: 500 }}>{user.username}</span>
-          <span style={{ background: "var(--verified-bg)", color: "var(--verified)", padding: "0.125rem 0.5rem", borderRadius: "100px", fontSize: "0.6875rem", textTransform: "uppercase", border: "1px solid rgba(29, 89, 86, 0.2)", fontWeight: 600 }}>
-            {user.role}
-          </span>
-          <button onClick={logout} className="btn-ghost" style={{ fontSize: "0.75rem", border: "1px solid var(--rule)", cursor: "pointer", padding: "0.25rem 0.5rem", background: "transparent", borderRadius: "var(--radius-sm)", color: "var(--ink-soft)" }}>
-            Sign out
+        </Link>
+
+        {title && (
+          <div style={{ marginLeft: "24px", paddingLeft: "16px", borderLeft: "1px solid rgba(255,255,255,0.2)", fontSize: "0.8125rem", color: "rgba(255,255,255,0.85)", fontWeight: 700 }}>
+            {title}
+          </div>
+        )}
+
+        <div className="topbar-spacer" />
+
+        <div className="topbar-user">
+          <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.7)" }}>Investigating Unit:</span>
+          <strong>{user.username}</strong>
+          <span className="user-badge">{user.role}</span>
+          <button onClick={logout} className="btn-signout" title="Sign out of console">
+            Sign Out
           </button>
         </div>
       </header>
 
-      {/* Sidebar */}
-      <aside className="sidebar" style={{ borderRight: "1px solid var(--rule)", background: "var(--void)" }}>
-        <div className="nav-section" style={{ color: "var(--text-faint)", fontWeight: 600, fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.05em", padding: "0 1.25rem", marginBottom: "0.5rem" }}>Triage</div>
-        <Link href="/dashboard" className={`nav-item ${pathname === "/dashboard" ? "active" : ""}`}>
-          ◱ Dashboard
-        </Link>
-        <Link href="/inbound" className={`nav-item ${pathname.startsWith("/inbound") ? "active" : ""}`}>
-          ↓ Inbound Reports
-        </Link>
-        
-        <div className="nav-section" style={{ color: "var(--text-faint)", fontWeight: 600, fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.05em", padding: "0 1.25rem", marginBottom: "0.5rem", marginTop: "1.5rem" }}>Investigation</div>
-        <Link href="/cases" className={`nav-item ${pathname.startsWith("/cases") ? "active" : ""}`}>
-          ◫ Active Cases
-        </Link>
+      {/* Fixed Sidebar */}
+      <aside className="sidebar">
+        {navGroups.map((grp) => (
+          <div key={grp.group} style={{ marginBottom: "16px" }}>
+            <div className="nav-group-title">{grp.group}</div>
+            {grp.items.map((item) => {
+              const isActive = item.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`nav-item ${isActive ? "active" : ""}`}
+                >
+                  <span style={{ fontSize: "1rem", width: "20px", textAlign: "center" }}>{item.icon}</span>
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        ))}
 
-        <div className="nav-section" style={{ color: "var(--text-faint)", fontWeight: 600, fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.05em", padding: "0 1.25rem", marginBottom: "0.5rem", marginTop: "1.5rem" }}>Oversight</div>
-        <Link href="/auditor" className={`nav-item ${pathname.startsWith("/auditor") ? "active" : ""}`}>
-          ◎ Auditor
-        </Link>
+        <div style={{ padding: "16px 24px", marginTop: "32px", borderTop: "var(--border)" }}>
+          <div style={{ fontSize: "0.6875rem", color: "var(--gray-500)", lineHeight: 1.4 }}>
+            <strong>Air-Gapped LAN Security:</strong>
+            <br />
+            BSA §63 Forensic Hash Ledger
+          </div>
+        </div>
       </aside>
 
-      {/* Main */}
+      {/* Main View Area */}
       <main className="main-view">
         {children}
       </main>

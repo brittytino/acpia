@@ -24,76 +24,74 @@ export function KnowledgeGraph({ graphData }: { graphData: { nodes: any[]; edges
         {
           selector: "node",
           style: {
-            "background-color": "var(--slate-hi)",
+            "background-color": "#FFFFFF",
             "border-width": 2,
-            "border-color": "var(--rule)",
+            "border-color": "#003B6F",
             label: "data(label)",
-            color: "var(--text)",
+            color: "#17212B",
             "text-valign": "bottom",
             "text-halign": "center",
             "text-margin-y": 6,
             "font-size": "11px",
-            "font-family": "'IBM Plex Sans', sans-serif",
-            width: 32,
-            height: 32,
-          }
+            "font-family": "Lato, sans-serif",
+            width: 34,
+            height: 34,
+          },
         },
         {
           selector: 'node[kind="person"]',
           style: {
-            "background-color": "var(--void)",
-            "border-color": "var(--steel)",
-            shape: "ellipse"
-          }
+            "background-color": "#EBF2F8",
+            "border-color": "#003B6F",
+            shape: "ellipse",
+          },
         },
         {
           selector: 'node[kind="file"]',
           style: {
-            "background-color": "var(--void)",
-            "border-color": "var(--text-dim)",
-            shape: "rectangle"
-          }
+            "background-color": "#FDF8EE",
+            "border-color": "#C9972B",
+            shape: "rectangle",
+          },
         },
         {
           selector: "edge",
           style: {
             width: 2,
-            "line-color": "var(--rule)",
-            "target-arrow-color": "var(--rule)",
+            "line-color": "#D9E0E6",
+            "target-arrow-color": "#003B6F",
             "target-arrow-shape": "triangle",
             "curve-style": "bezier",
             label: "data(kind)",
-            "font-size": "9px",
+            "font-size": "10px",
             "text-rotation": "autorotate",
             "text-background-opacity": 1,
-            "text-background-color": "var(--void)",
-            color: "var(--text-faint)",
-            "font-family": "'IBM Plex Mono', monospace",
-          }
+            "text-background-color": "#FFFFFF",
+            color: "#5F6B76",
+          },
         },
         {
           selector: 'edge[kind="similarity"]',
           style: {
             "line-style": "dashed",
-            "line-color": "var(--pending)",
-            "target-arrow-color": "var(--pending)",
-          }
-        }
+            "line-color": "#C9972B",
+            "target-arrow-color": "#C9972B",
+          },
+        },
       ],
       layout: {
         name: "dagre",
         rankDir: "TB",
         spacingFactor: 1.2,
         animate: true,
-      } as any
+      } as any,
     });
 
-    // Add interactivity
-    cy.on('tap', 'node', function(evt){
+    cy.on("tap", "node", function (evt) {
       const node = evt.target;
-      cy.elements().removeClass('highlighted');
-      node.neighborhood().addClass('highlighted');
-      node.addClass('highlighted');
+      cy.elements().removeClass("highlighted");
+      node.neighborhood().addClass("highlighted");
+      node.addClass("highlighted");
     });
 
     cyRef.current = cy;
@@ -104,24 +102,31 @@ export function KnowledgeGraph({ graphData }: { graphData: { nodes: any[]; edges
   }, [graphData]);
 
   if (!graphData || graphData.nodes.length === 0) {
-    return <div className="card" style={{ height: "400px", display: "flex", alignItems: "center", justifyContent: "center" }}>No graph data available. Run pipeline to extract nodes.</div>;
+    return (
+      <div className="card" style={{ height: "360px", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--gray-500)" }}>
+        No entity graph data available. Run intelligence analysis pipeline to extract entities.
+      </div>
+    );
   }
 
   return (
-    <div style={{ position: "relative" }}>
-      <div className="panel-header" style={{ marginBottom: "0.5rem" }}>
-        <h2>Identity Resolution Graph</h2>
+    <div className="card" style={{ position: "relative", padding: "16px" }}>
+      <div style={{ fontWeight: 700, color: "var(--primary)", fontSize: "0.9375rem", marginBottom: "12px" }}>
+        Entity Resolution & Relationship Graph
       </div>
-      <div ref={containerRef} className="graph-container" style={{ height: "400px" }} />
-      <div style={{ position: "absolute", bottom: "1rem", left: "1rem", display: "flex", gap: "1rem", background: "var(--slate-hi)", padding: "0.5rem 0.75rem", borderRadius: "var(--radius-sm)", border: "1px solid var(--rule)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.75rem" }}>
-          <div style={{ width: "12px", height: "12px", borderRadius: "50%", border: "2px solid var(--steel)" }}></div> Person
+      <div ref={containerRef} style={{ height: "380px", background: "var(--gray-50)", border: "var(--border)", borderRadius: "var(--radius-sm)" }} />
+      <div style={{ display: "flex", gap: "16px", background: "var(--white)", padding: "8px 12px", border: "var(--border)", borderRadius: "var(--radius-sm)", marginTop: "10px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.75rem" }}>
+          <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "#EBF2F8", border: "2px solid #003B6F" }}></div>
+          Person Entity
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.75rem" }}>
-          <div style={{ width: "12px", height: "12px", border: "2px solid var(--text-dim)" }}></div> File
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.75rem" }}>
+          <div style={{ width: "12px", height: "12px", background: "#FDF8EE", border: "2px solid #C9972B" }}></div>
+          Evidence File
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.75rem" }}>
-          <div style={{ width: "16px", height: "2px", borderTop: "2px dashed var(--pending)" }}></div> Similarity Link (AI)
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.75rem" }}>
+          <div style={{ width: "16px", height: "2px", borderTop: "2px dashed #C9972B" }}></div>
+          AI Semantic Similarity Link
         </div>
       </div>
     </div>

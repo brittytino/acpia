@@ -1,5 +1,5 @@
 "use client";
-import { ResponsiveContainer, ScatterChart, Scatter, XAxis, YAxis, ZAxis, Tooltip, CartesianGrid, ReferenceLine } from "recharts";
+import { ResponsiveContainer, ScatterChart, Scatter, XAxis, YAxis, ZAxis, Tooltip, CartesianGrid } from "recharts";
 
 const STAGES = [
   "none",
@@ -16,7 +16,6 @@ export function EscalationTimeline({ conversation }: { conversation: any }) {
 
   const data = conversation.messages.map((m: any) => {
     const d = new Date(m.sent_at);
-    // Convert to relative days from first message for X axis
     return {
       x: d.getTime(),
       y: STAGES.indexOf(m.stage),
@@ -28,7 +27,7 @@ export function EscalationTimeline({ conversation }: { conversation: any }) {
       language: m.language,
       tamil_share: m.tamil_share
     };
-  }).filter((d: any) => d.y > 0); // Ignore 'none' for clear trend visualization
+  }).filter((d: any) => d.y > 0);
 
   if (data.length === 0) return <div className="card">No escalation stages detected in this conversation.</div>;
 
@@ -44,14 +43,17 @@ export function EscalationTimeline({ conversation }: { conversation: any }) {
     if (active && payload && payload.length) {
       const d = payload[0].payload;
       return (
-        <div style={{ background: "var(--slate-hi)", border: "1px solid var(--rule)", padding: "0.75rem", borderRadius: "var(--radius-sm)", boxShadow: "var(--shadow-md)" }}>
-          <div className="label" style={{ color: "var(--steel)", marginBottom: "0.25rem" }}>{d.stage.replace('_', ' ')}</div>
-          <div style={{ fontSize: "0.8125rem", color: "var(--text)", marginBottom: "0.25rem" }}>{d.time}</div>
-          <div style={{ fontSize: "0.8125rem", color: "var(--text-dim)", marginBottom: "0.25rem", display: "flex", justifyContent: "space-between" }}>
-            <span>Sender: {d.sender}</span>
-            {d.language && <span style={{ background: "var(--void)", border: "1px solid var(--rule)", padding: "1px 4px", borderRadius: "4px" }}>{d.language} ({(d.tamil_share * 100).toFixed(0)}% ta)</span>}
+        <div style={{ background: "var(--white)", border: "var(--border)", padding: "10px 14px", borderRadius: "var(--radius-sm)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+          <div style={{ fontWeight: 700, color: "var(--primary)", fontSize: "0.8125rem", textTransform: "uppercase" }}>
+            {d.stage.replace(/_/g, ' ')}
           </div>
-          <div className="mono" style={{ fontSize: "0.75rem", color: "var(--text-faint)" }}>Conf: {(d.z * 100).toFixed(1)}% | {d.span}</div>
+          <div style={{ fontSize: "0.75rem", color: "var(--gray-600)", margin: "2px 0 6px" }}>{d.time}</div>
+          <div style={{ fontSize: "0.8125rem", color: "var(--gray-900)", marginBottom: "4px" }}>
+            Sender: <strong>{d.sender}</strong>
+          </div>
+          <div className="mono" style={{ fontSize: "0.6875rem", color: "var(--gray-500)" }}>
+            Confidence: {(d.z * 100).toFixed(1)}% | {d.span}
+          </div>
         </div>
       );
     }
@@ -59,94 +61,66 @@ export function EscalationTimeline({ conversation }: { conversation: any }) {
   };
 
   return (
-    <div className="timeline-container">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "1.5rem" }}>
+    <div className="card">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "16px" }}>
         <div>
-          <div className="label">Escalation Timeline</div>
-          <div style={{ fontSize: "1.125rem", fontWeight: 600, color: "var(--text)", marginTop: "0.25rem" }}>
+          <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--gray-600)", textTransform: "uppercase" }}>
+            Escalation Trajectory
+          </div>
+          <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--primary)", marginTop: "2px" }}>
             {conversation.participants.join(" ⇄ ")}
           </div>
         </div>
         <div style={{ textAlign: "right" }}>
-          <div className="mono" style={{ fontSize: "0.8125rem", color: "var(--text-dim)" }}>
-            Trajectory: <span style={{ color: conversation.trajectory > 0 ? "var(--integrity)" : "var(--steel)" }}>
+          <div className="mono" style={{ fontSize: "0.8125rem", color: "var(--gray-900)" }}>
+            Trajectory: <span style={{ fontWeight: 700, color: conversation.trajectory > 0 ? "var(--danger)" : "var(--primary)" }}>
               {conversation.trajectory > 0 ? "+" : ""}{conversation.trajectory?.toFixed(2)} stages/week
             </span>
           </div>
           {conversation.drift_ratio && conversation.drift_ratio > 1.5 && (
-            <div className="badge badge-alarm" style={{ marginTop: "0.5rem" }}>
+            <div className="badge badge-warning" style={{ marginTop: "4px" }}>
               ⚠ DRIFT ×{conversation.drift_ratio.toFixed(1)}
             </div>
           )}
         </div>
       </div>
 
-      <div style={{ height: "300px", width: "100%" }}>
+      <div style={{ height: "260px", width: "100%" }}>
         <ResponsiveContainer width="100%" height="100%">
-          <ScatterChart margin={{ top: 10, right: 20, bottom: 20, left: 20 }}>
-            <CartesianGrid stroke="var(--rule)" strokeDasharray="3 3" vertical={false} />
+          <ScatterChart margin={{ top: 10, right: 20, bottom: 20, left: 10 }}>
+            <CartesianGrid stroke="var(--gray-200)" strokeDasharray="3 3" vertical={false} />
             <XAxis 
               type="number" 
               dataKey="x" 
               domain={[minX, maxX]} 
               tickFormatter={formatXAxis}
-              stroke="var(--text-faint)"
-              tick={{ fill: 'var(--text-faint)', fontSize: 11, fontFamily: "'IBM Plex Mono', monospace" }}
+              stroke="var(--gray-500)"
+              tick={{ fill: 'var(--gray-600)', fontSize: 11 }}
             />
             <YAxis 
               type="number" 
               dataKey="y" 
               domain={[1, 6]} 
               ticks={[1, 2, 3, 4, 5, 6]}
-              tickFormatter={(val) => STAGES[val].replace('_', ' ')}
-              stroke="var(--text-faint)"
-              tick={{ fill: 'var(--text-faint)', fontSize: 11 }}
-              width={100}
+              tickFormatter={(val) => STAGES[val].replace(/_/g, ' ')}
+              stroke="var(--gray-500)"
+              tick={{ fill: 'var(--gray-600)', fontSize: 11 }}
+              width={120}
             />
-            <ZAxis type="number" dataKey="z" range={[20, 100]} />
+            <ZAxis type="number" dataKey="z" range={[30, 90]} />
             <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }} />
             
-            <Scatter name="Messages" data={data} fill="var(--steel)">
+            <Scatter name="Messages" data={data} fill="var(--primary)">
               {data.map((entry: any, index: number) => (
-                <circle key={`cell-${index}`} cx={0} cy={0} r={4} fill="var(--steel)" opacity={entry.z} />
+                <circle key={`cell-${index}`} cx={0} cy={0} r={5} fill="var(--primary)" opacity={entry.z} />
               ))}
             </Scatter>
           </ScatterChart>
         </ResponsiveContainer>
       </div>
-      <div className="label" style={{ textAlign: "right", marginTop: "0.5rem" }}>
-        Opacity indicates classification confidence
+      <div style={{ fontSize: "0.6875rem", color: "var(--gray-500)", textAlign: "right", marginTop: "4px" }}>
+        Opacity indicates AI classification confidence &bull; X-axis reflects chronological timeline
       </div>
-      
-      {conversation.code_switch && (
-        <div style={{ marginTop: "1.5rem", borderTop: "1px solid var(--rule)", paddingTop: "1rem" }}>
-          <div className="mono" style={{ fontSize: "0.75rem", color: "var(--text-faint)", marginBottom: "0.5rem", display: "flex", justifyContent: "space-between" }}>
-            <span>language</span>
-            <span>window 1 to {conversation.code_switch.windows.length}</span>
-          </div>
-          <div style={{ display: "flex", gap: "2px", height: "24px" }}>
-            {conversation.code_switch.windows.map((w: number, i: number) => (
-              <div key={i} style={{ 
-                flex: 1, 
-                background: `rgba(62,140,126,${w})`, 
-                border: "1px solid var(--rule)",
-                position: "relative" 
-              }}>
-                <span className="mono" style={{ position: "absolute", bottom: "-20px", left: "50%", transform: "translateX(-50%)", fontSize: "10px", color: "var(--text-dim)", whiteSpace: "nowrap" }}>
-                  {(w * 100).toFixed(0)}% ta
-                </span>
-              </div>
-            ))}
-          </div>
-          {conversation.code_switch.delta > 0.12 && (
-            <div style={{ marginTop: "2.5rem", color: "var(--pending)", fontSize: "0.875rem", fontWeight: 500, display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
-              <span className="badge badge-pending">⚠ CODE-SWITCH DRIFT</span>
-              <span style={{ color: "var(--text)" }}>{conversation.code_switch.direction.replace('_', ' ')}, {(conversation.code_switch.delta > 0 ? "+" : "")}{conversation.code_switch.delta.toFixed(2)} across the conversation</span>
-              <span style={{ color: "var(--text-faint)", fontSize: "0.75rem", marginLeft: "auto" }}>Surfaced as a signal. Requires investigator verification.</span>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
