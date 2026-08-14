@@ -14,12 +14,15 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from sqlalchemy.orm import DeclarativeBase
 from app.config import settings
 
+_connect_args = {"ssl": "require"} if settings.DB_SSL_REQUIRE else {}
+
 owner_engine = create_async_engine(
     settings.DATABASE_URL,
     echo=False,
     pool_pre_ping=True,
     pool_size=5,
     max_overflow=5,
+    connect_args=_connect_args,
 )
 
 engine = create_async_engine(
@@ -28,6 +31,7 @@ engine = create_async_engine(
     pool_pre_ping=True,
     pool_size=10,
     max_overflow=20,
+    connect_args=_connect_args,
 )
 
 AsyncSessionLocal = async_sessionmaker(
@@ -90,4 +94,9 @@ async def _provision_app_role():
             f'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON SEQUENCES TO "{role}"'
         ))
         # The load-bearing line: append-only, enforced by Postgres itself.
-        await conn.execute(text(f'REVOKE UPDATE, DELETE ON custody_log FROM "{role}"'))
+        # TRUNCATE is revoked too — GRANT ALL above includes it, and it
+        # would otherwise let the app role wipe the whole ledger in one
+        # statement (no FK from any other table references custody_log, so
+        # nothing blocks a bare TRUNCATE the way REVOKE DELETE blocks a row
+        # delete).
+        await conn.execute(text(f'REVOKE UPDATE, DELETE, TRUNCATE ON custody_log FROM "{role}"'))

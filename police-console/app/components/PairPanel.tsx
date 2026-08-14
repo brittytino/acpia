@@ -16,7 +16,12 @@ export function PairPanel({ caseId }: { caseId: string }) {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.ok) setPairing(await res.json());
+      if (res.ok) {
+        const data = await res.json();
+        // Override the backend-provided URL with our actual host for mobile access
+        data.url = `http://${window.location.hostname}:47803/pair/${data.token}`;
+        setPairing(data);
+      }
     } finally {
       setLoading(false);
     }

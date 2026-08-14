@@ -4,6 +4,8 @@ Evidence you can trust. Investigation you can defend.
 Three services: Postgres, Ollama, this app.
 """
 import logging
+import sys
+import os
 from contextlib import asynccontextmanager
 import httpx
 from fastapi import FastAPI
@@ -43,8 +45,19 @@ async def lifespan(app: FastAPI):
     try:
         await create_tables()
         log.info("✅ Database ready — tables created, append-only role provisioned")
+
+        # Auto-seed demo users — dev/staging convenience only. Never run this
+        # against a production database: it creates well-known credentials
+        # (see backend/scripts/seed.py) and resets them on every restart.
+        if settings.ENVIRONMENT == "production":
+            log.info("ENVIRONMENT=production — skipping demo user seeding")
+        else:
+            sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            from scripts.seed import seed_users
+            await seed_users()
+            log.warning("⚠️  Seeded demo users with known passwords — dev/staging only, never production")
     except Exception as e:
-        log.error(f"❌ Database init failed: {e}")
+        log.error(f"❌ Database init/seed failed: {e}")
 
     import os
     os.makedirs(settings.STORAGE_PATH, exist_ok=True)

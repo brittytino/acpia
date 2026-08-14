@@ -1,31 +1,124 @@
-name: Deploy to Azure VM
+name: Deploy to Azure App Service (containers)
+
+# Primary deployment path: builds all three services as Docker images,
+# pushes them to GitHub Container Registry, and deploys each to its own
+# Azure Web App for Containers. No SSH required — publishing uses each
+# App Service's publish profile, downloaded once from the Azure Portal
+# (Overview → Get publish profile) and stored as a GitHub secret.
+#
+# Requires three Azure App Services already created (Linux, "Docker
+# Container" publish type) — see DEPLOYMENT.md for exact setup and the
+# required secrets/variables list.
+#
+# If DevOps provisions fewer than three App Services, use
+# deploy-azure-zip.yml instead for the two Next.js frontends (the backend
+# needs OS packages — tesseract, exiftool, ffmpeg — that a code-only zip
+# deploy can't install, so it stays container-only; see DEPLOYMENT.md).
 
 on:
   push:
-    branches:
-      - main # Triggers deployment when pushing to the main branch
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_OWNER: ${{ github.repository_owner }}
 
 jobs:
-  deploy:
+  build-and-push:
     runs-on: ubuntu-latest
-
+    outputs:
+      backend-image: ${{ steps.tags.outputs.backend }}
+      seal-image: ${{ steps.tags.outputs.seal }}
+      console-image: ${{ steps.tags.outputs.console }}
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Deploy to Azure Virtual Machine via SSH
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          host: ${{ secrets.AZURE_VM_IP }}
-          username: ${{ secrets.AZURE_VM_USERNAME }}
-          key: ${{ secrets.AZURE_VM_SSH_KEY }}
-          script: |
-            # Navigate to the repository directory
-            # Make sure you clone the repo to this path initially on the server!
-            cd /home/${{ secrets.AZURE_VM_USERNAME }}/acpia
-            
-            # Pull the latest changes from the main branch
-            git pull origin main
-            
-            # Rebuild and restart the Docker containers gracefully
-            docker compose up -d --build
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set image tags
+        id: tags
+        run: |
+          OWNER_LC=$(echo "${{ env.IMAGE_OWNER }}" | tr '[:upper:]' '[:lower:]')
+          echo "owner_lc=$OWNER_LC" >> "$GITHUB_OUTPUT"
+          echo "backend=${{ env.REGISTRY }}/$OWNER_LC/acpia-backend:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          echo "seal=${{ env.REGISTRY }}/$OWNER_LC/acpia-seal:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          echo "console=${{ env.REGISTRY }}/$OWNER_LC/acpia-console:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ steps.tags.outputs.backend }}
+            ${{ env.REGISTRY }}/${{ steps.tags.outputs.owner_lc }}/acpia-backend:latest
+
+      - name: Build and push seal
+        uses: docker/build-push-action@v5
+        with:
+          context: ./seal
+          push: true
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ vars.SEAL_NEXT_PUBLIC_API_URL }}
+          tags: |
+            ${{ steps.tags.outputs.seal }}
+            ${{ env.REGISTRY }}/${{ steps.tags.outputs.owner_lc }}/acpia-seal:latest
+
+      - name: Build and push console
+        uses: docker/build-push-action@v5
+        with:
+          context: ./police-console
+          push: true
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ vars.CONSOLE_NEXT_PUBLIC_API_URL }}
+            NEXT_PUBLIC_WS_URL=${{ vars.CONSOLE_NEXT_PUBLIC_WS_URL }}
+            NEXT_PUBLIC_SHOW_DEMO_CREDENTIALS=${{ vars.SHOW_DEMO_CREDENTIALS }}
+          tags: |
+            ${{ steps.tags.outputs.console }}
+            ${{ env.REGISTRY }}/${{ steps.tags.outputs.owner_lc }}/acpia-console:latest
+
+  deploy-backend:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    steps:
+      - uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_BACKEND_APP_NAME }}
+          publish-profile: ${{ secrets.AZURE_BACKEND_PUBLISH_PROFILE }}
+          images: ${{ needs.build-and-push.outputs.backend-image }}
+
+  deploy-seal:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    steps:
+      - uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_SEAL_APP_NAME }}
+          publish-profile: ${{ secrets.AZURE_SEAL_PUBLISH_PROFILE }}
+          images: ${{ needs.build-and-push.outputs.seal-image }}
+
+  deploy-console:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    steps:
+      - uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_CONSOLE_APP_NAME }}
+          publish-profile: ${{ secrets.AZURE_CONSOLE_PUBLISH_PROFILE }}
+          images: ${{ needs.build-and-push.outputs.console-image }}

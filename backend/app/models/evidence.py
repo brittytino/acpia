@@ -75,7 +75,11 @@ class CustodyLog(Base):
     __tablename__ = "custody_log"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    case_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("cases.id", ondelete="CASCADE"), nullable=False)
+    # RESTRICT, never CASCADE: a case must never be hard-deletable while it
+    # still has custody entries, or "deleting a case" would silently erase
+    # the tamper-evident record of its own deletion. Cases are soft-deleted
+    # (status="deleted") instead — see veritas.py::approve_cosign.
+    case_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("cases.id", ondelete="RESTRICT"), nullable=False)
     actor_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("users.id"), nullable=True)
     action: Mapped[str] = mapped_column(String, nullable=False)
     target_type: Mapped[str] = mapped_column(String, nullable=False)

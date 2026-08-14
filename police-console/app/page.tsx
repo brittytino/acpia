@@ -105,21 +105,26 @@ export default function LoginPage() {
           </form>
         </div>
 
-        {/* Demo Credentials Box */}
-        <div className="card" style={{ marginTop: "16px", padding: "16px 20px", background: "var(--white)" }}>
-          <div style={{ fontWeight: 700, color: "var(--primary)", fontSize: "0.8125rem", marginBottom: "8px" }}>
-            🔑 Pre-Configured Demo Credentials:
+        {/* Demo Credentials Box — only when the backend has actually opted
+            into seeding them (NEXT_PUBLIC_SHOW_DEMO_CREDENTIALS=true). This
+            used to render unconditionally on every deployment, advertising
+            admin/password123 to anyone who loaded the login page. */}
+        {process.env.NEXT_PUBLIC_SHOW_DEMO_CREDENTIALS === "true" && (
+          <div className="card" style={{ marginTop: "16px", padding: "16px 20px", background: "var(--white)" }}>
+            <div style={{ fontWeight: 700, color: "var(--primary)", fontSize: "0.8125rem", marginBottom: "8px" }}>
+              🔑 Pre-Configured Demo Credentials:
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", fontSize: "0.75rem", color: "var(--gray-900)" }}>
+              <div>&bull; Investigator: <code>investigator1</code></div>
+              <div>&bull; Supervisor: <code>supervisor1</code></div>
+              <div>&bull; Auditor: <code>auditor1</code></div>
+              <div>&bull; Admin: <code>admin</code></div>
+            </div>
+            <div style={{ fontSize: "0.75rem", color: "var(--gray-600)", marginTop: "6px", borderTop: "var(--border)", paddingTop: "6px" }}>
+              Password for all accounts: <code>password123</code>
+            </div>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", fontSize: "0.75rem", color: "var(--gray-900)" }}>
-            <div>&bull; Investigator: <code>investigator1</code></div>
-            <div>&bull; Supervisor: <code>supervisor1</code></div>
-            <div>&bull; Auditor: <code>auditor1</code></div>
-            <div>&bull; Admin: <code>admin</code></div>
-          </div>
-          <div style={{ fontSize: "0.75rem", color: "var(--gray-600)", marginTop: "6px", borderTop: "var(--border)", paddingTop: "6px" }}>
-            Password for all accounts: <code>password123</code>
-          </div>
-        </div>
+        )}
 
         <div style={{ textAlign: "center", marginTop: "16px" }}>
           <p style={{ fontSize: "0.6875rem", color: "var(--gray-500)", margin: 0 }}>

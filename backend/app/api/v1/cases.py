@@ -37,7 +37,9 @@ async def list_cases(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(select(Case).order_by(Case.created_at.desc()))
+    result = await db.execute(
+        select(Case).where(Case.status != "deleted").order_by(Case.created_at.desc())
+    )
     cases = result.scalars().all()
 
     output = []

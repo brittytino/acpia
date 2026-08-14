@@ -7,8 +7,6 @@ RUN apt-get update && apt-get install -y \
     # Tesseract OCR
     tesseract-ocr \
     tesseract-ocr-eng \
-    tesseract-ocr-spa \
-    tesseract-ocr-fra \
     # FFmpeg
     ffmpeg \
     # Image libraries
@@ -18,7 +16,6 @@ RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
     curl \
-    git \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -28,11 +25,19 @@ COPY pyproject.toml ./
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir .
 
+# Copy application code
 COPY . .
 
-# Create upload temp directory
-RUN mkdir -p /tmp/uploads /data/known_hashes
+# Create required directories
+RUN mkdir -p /tmp/uploads /data/known_hashes ./storage
 
-EXPOSE 8000
+# Run as non-root: this process handles untrusted uploads and evidence
+# files, so a container-escape or path-traversal bug shouldn't also hand
+# the attacker root inside the container.
+RUN useradd --create-home --uid 1000 acpia \
+    && chown -R acpia:acpia /app /tmp/uploads /data
+USER acpia
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+EXPOSE 47802
+
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "47802"]

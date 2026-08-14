@@ -4,6 +4,7 @@
 Kept in one router because each piece is small and they share the same
 "the architecture is the answer" philosophy — see VERITAS_FINAL_MASTER_PLAN.md.
 """
+import asyncio
 import hashlib
 import secrets
 from datetime import datetime, timezone, timedelta
@@ -13,12 +14,13 @@ from uuid import UUID
 import aiofiles
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.config import settings
 from app.core.security import get_current_user, require_role
+from app.core.ratelimit import rate_limit
 from app.core.custody import write_custody, verify_chain
 from app.core.events import bus
 from app.models.user import User
@@ -239,7 +241,7 @@ async def list_dispute_codes(
     } for dc in rows]
 
 
-@router.get("/disputes/{code}")
+@router.get("/disputes/{code}", dependencies=[Depends(rate_limit(20, 60))])
 async def get_dispute_scope(code: str, db: AsyncSession = Depends(get_db)):
     """Public, unauthenticated. Tells a party only their own role, the
     scope they're responding to, and whether they've already submitted —
@@ -256,7 +258,7 @@ async def get_dispute_scope(code: str, db: AsyncSession = Depends(get_db)):
     }
 
 
-@router.post("/disputes/{code}/submit", status_code=201)
+@router.post("/disputes/{code}/submit", status_code=201, dependencies=[Depends(rate_limit(10, 60))])
 async def submit_dispute_evidence(code: str, body: DisputeSubmit, db: AsyncSession = Depends(get_db)):
     """The respondent/complainant seals and submits, blind, straight into
     the case their code was issued for. No investigator step in between —
@@ -380,6 +382,13 @@ async def request_cosign(
 ):
     if body.action not in ("delete_case", "override_integrity_failure"):
         raise HTTPException(422, "Unknown action.")
+    if body.action == "override_integrity_failure":
+        ev_id = body.detail.get("evidence_id")
+        ev = (await db.execute(
+            select(Evidence).where(Evidence.id == UUID(ev_id), Evidence.case_id == case_id)
+        )).scalar_one_or_none() if ev_id else None
+        if not ev:
+            raise HTTPException(422, "evidence_id must reference evidence in this case.")
     req = CoSignRequest(case_id=case_id, action=body.action, detail=body.detail,
                         requested_by=current_user.id)
     db.add(req)
@@ -427,9 +436,12 @@ async def approve_cosign(
     if req.action == "override_integrity_failure":
         ev_id = req.detail.get("evidence_id")
         if ev_id:
-            ev = (await db.execute(select(Evidence).where(Evidence.id == UUID(ev_id)))).scalar_one_or_none()
-            if ev:
-                ev.integrity_ok = True
+            ev = (await db.execute(
+                select(Evidence).where(Evidence.id == UUID(ev_id), Evidence.case_id == req.case_id)
+            )).scalar_one_or_none()
+            if not ev:
+                raise HTTPException(422, "Evidence not found in this case.")
+            ev.integrity_ok = True
         await write_custody(db, req.case_id, current_user.id, "INTEGRITY_OVERRIDDEN", "evidence",
                             UUID(ev_id) if ev_id else None,
                             {"requested_by": str(req.requested_by), "cosign_request": str(req.id)})
@@ -438,13 +450,16 @@ async def approve_cosign(
         return {"status": "executed", "action": req.action}
 
     if req.action == "delete_case":
+        # Soft delete only. A hard DELETE would cascade to (or be blocked by,
+        # per the RESTRICT FK) custody_log — either way, physically removing
+        # a case is incompatible with an append-only ledger that's supposed
+        # to survive its own deletion event, detectably, forever.
+        case = (await db.execute(select(Case).where(Case.id == req.case_id))).scalar_one_or_none()
+        if case:
+            case.status = "deleted"
         await write_custody(db, req.case_id, current_user.id, "CASE_DELETION_APPROVED", "case",
                             req.case_id, {"requested_by": str(req.requested_by)})
         await db.commit()
-        case = (await db.execute(select(Case).where(Case.id == req.case_id))).scalar_one_or_none()
-        if case:
-            await db.delete(case)
-            await db.commit()
         return {"status": "executed", "action": req.action}
 
     await db.commit()
@@ -490,7 +505,7 @@ async def create_pairing(
     return {"url": f"{settings.SEAL_URL}/pair/{token}", "token": token, "expires_in": 900}
 
 
-@router.get("/pair/{token}")
+@router.get("/pair/{token}", dependencies=[Depends(rate_limit(20, 60))])
 async def get_pairing(token: str, db: AsyncSession = Depends(get_db)):
     pt = (await db.execute(select(PairingToken).where(PairingToken.token == token))).scalar_one_or_none()
     if not pt:
@@ -505,13 +520,26 @@ class PairSubmit(BaseModel):
     artifacts: List[SealedArtifactIn]
 
 
-@router.post("/pair/{token}/submit", status_code=201)
+@router.post("/pair/{token}/submit", status_code=201, dependencies=[Depends(rate_limit(10, 60))])
 async def submit_via_pairing(token: str, body: PairSubmit, db: AsyncSession = Depends(get_db)):
     pt = (await db.execute(select(PairingToken).where(PairingToken.token == token))).scalar_one_or_none()
     if not pt:
         raise HTTPException(404, "Pairing link not found.")
     if pt.expires_at < datetime.now(timezone.utc):
         raise HTTPException(410, "This pairing link has expired.")
+    if pt.used:
+        raise HTTPException(410, "This pairing link has already been used.")
+
+    # Atomically claim the token before writing any evidence, so two
+    # concurrent submits (e.g. a double-tap) can't both race past the check
+    # above and both succeed.
+    claim = await db.execute(
+        update(PairingToken)
+        .where(PairingToken.id == pt.id, PairingToken.used == False)  # noqa: E712
+        .values(used=True)
+    )
+    if claim.rowcount == 0:
+        raise HTTPException(410, "This pairing link has already been used.")
 
     created = []
     for a in body.artifacts:
