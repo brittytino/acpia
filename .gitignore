@@ -37,6 +37,12 @@ minio_data/
 redis_data/
 ollama_data/
 
+# Evidence storage — must never be committed. The handful of files already
+# tracked under backend/storage/cases/ are synthetic demo fixtures (they
+# match demo/demo_chat_export.txt byte-for-byte); this rule only stops new,
+# potentially real evidence from being added by habit.
+backend/storage/
+
 # Logs
 *.log
 logs/

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.seal import SealedReport, SealedArtifact
 from app.core.pdf_safe import pdf_safe
+from app.core.ratelimit import rate_limit
 from pydantic import BaseModel, EmailStr
 from typing import List, Optional
 
@@ -40,7 +41,7 @@ class SealReportCreate(BaseModel):
     artifacts: List[SealedArtifactItem]
 
 
-@router.post("/reports", status_code=201)
+@router.post("/reports", status_code=201, dependencies=[Depends(rate_limit(10, 60))])
 async def create_sealed_report(body: SealReportCreate, db: AsyncSession = Depends(get_db)):
     """
     Accepts hashes and context. For the illegal-material path, NEVER a body.

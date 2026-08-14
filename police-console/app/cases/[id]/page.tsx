@@ -61,7 +61,8 @@ export default function CaseWorkspace({ params }: { params: { id: string } }) {
   useEffect(() => {
     fetchCaseData();
 
-    ws.current = new WebSocket(`${WS_API}/api/v1/cases/${params.id}/stream`);
+    const wsToken = localStorage.getItem("acpia_token") || "";
+    ws.current = new WebSocket(`${WS_API}/api/v1/cases/${params.id}/stream?token=${encodeURIComponent(wsToken)}`);
 
     ws.current.onmessage = (event) => {
       try {
@@ -152,9 +153,20 @@ export default function CaseWorkspace({ params }: { params: { id: string } }) {
     fetchCaseData();
   };
 
-  const downloadReport = (type: "report" | "certificate") => {
+  const downloadReport = async (type: "report" | "certificate") => {
+    // Fetch with the token in an Authorization header rather than the URL —
+    // a token in the URL ends up in browser history and server access
+    // logs, and can leak via the Referer header of whatever the opened tab
+    // navigates to next.
     const token = localStorage.getItem("acpia_token");
-    window.open(`${API}/api/v1/cases/${params.id}/${type}?token=${token}`, "_blank");
+    const res = await fetch(`${API}/api/v1/cases/${params.id}/${type}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return;
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
   };
 
   if (!caseData) {

@@ -6,7 +6,7 @@ from sqlalchemy import select
 
 from app.database import get_db
 from app.core.events import bus
-from app.core.security import get_current_user
+from app.core.security import get_current_user, decode_token
 from app.models.case import Case
 from app.models.user import User
 from app.pipeline import run_pipeline
@@ -15,8 +15,20 @@ router = APIRouter(tags=["Stream"])
 
 
 @router.websocket("/cases/{case_id}/stream")
-async def stream_case(case_id: str, websocket: WebSocket):
-    """WebSocket endpoint — subscribe to all pipeline events for a case."""
+async def stream_case(case_id: str, websocket: WebSocket, token: str = ""):
+    """WebSocket endpoint — subscribe to all pipeline events for a case.
+
+    Browsers can't set an Authorization header on a WebSocket handshake, so
+    the JWT travels as a query param instead. Without this, anyone who can
+    reach the backend and guess a case UUID could watch live investigator
+    activity (usernames, lead/contradiction/dispute events) for any case.
+    """
+    try:
+        decode_token(token)
+    except Exception:
+        await websocket.close(code=4401)
+        return
+
     await bus.subscribe(case_id, websocket)
     try:
         while True:

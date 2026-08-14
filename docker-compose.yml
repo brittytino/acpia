@@ -5,9 +5,11 @@ services:
     environment:
       POSTGRES_DB: acpia
       POSTGRES_USER: acpia
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env — see .env.example}
     ports:
-      - "47800:5432"
+      # Bound to loopback only. Postgres must never be reachable off-host —
+      # the whole "air-gapped console" claim depends on this.
+      - "127.0.0.1:47800:5432"
     volumes:
       - acpia_pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -20,7 +22,8 @@ services:
     image: ollama/ollama:latest
     container_name: acpia-ollama
     ports:
-      - "47801:11434"
+      # Loopback only — the Ollama API has no auth of its own.
+      - "127.0.0.1:47801:11434"
     volumes:
       - acpia_ollama:/root/.ollama
     restart: unless-stopped
@@ -40,31 +43,36 @@ services:
     container_name: acpia-backend
     environment:
       # Database — point to postgres container
-      DATABASE_URL: postgresql+asyncpg://acpia:${POSTGRES_PASSWORD:-password}@postgres:5432/acpia
-      DATABASE_URL_SYNC: postgresql://acpia:${POSTGRES_PASSWORD:-password}@postgres:5432/acpia
-      DATABASE_URL_APP: postgresql+asyncpg://veritas_app:veritas_app_dev_pw@postgres:5432/acpia
+      DATABASE_URL: postgresql+asyncpg://acpia:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/acpia
+      DATABASE_URL_SYNC: postgresql://acpia:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/acpia
+      DATABASE_URL_APP: postgresql+asyncpg://veritas_app:${DB_APP_PASSWORD:?Set DB_APP_PASSWORD in .env}@postgres:5432/acpia
       DB_APP_ROLE: veritas_app
-      DB_APP_PASSWORD: veritas_app_dev_pw
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD:?Set DB_APP_PASSWORD in .env}
       # Ollama AI
       OLLAMA_BASE_URL: http://ollama:11434
       # App
       ENVIRONMENT: production
       DEBUG: "false"
-      SECRET_KEY: ${JWT_SECRET:-acpia_super_secret_key_change_in_production_2026}
+      SECRET_KEY: ${JWT_SECRET:?Set JWT_SECRET in .env — e.g. openssl rand -base64 48}
+      # Explicit opt-in only — creates well-known demo accounts. Leave unset/false
+      # for any deployment holding real cases.
+      SEED_DEMO_USERS: ${SEED_DEMO_USERS:-false}
       BACKEND_PORT: "47802"
       STORAGE_PATH: /app/storage
-      # CORS — allow all origins for cloud deployment
-      CORS_ORIGINS: '["*"]'
+      # CORS — explicit origin allowlist. Never "*": this app sends credentialed
+      # requests, and a wildcard origin with allow_credentials=True means any
+      # website can make authenticated calls on a logged-in officer's behalf.
+      CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:47803","http://localhost:47804"]}
       # Frontend URLs (for email links — point to public-facing ports)
-      SEAL_URL: http://localhost:47803
-      CONSOLE_URL: http://localhost:47804
-      # SMTP
-      SMTP_HOST: smtp.gmail.com
-      SMTP_PORT: "587"
-      SMTP_USER: barathvikraman.clovertech@gmail.com
-      SMTP_PASSWORD: ldqjpvtigidttnqz
-      SMTP_FROM: "VERITAS ACPIA <barathvikraman.clovertech@gmail.com>"
-      SMTP_ENABLED: "true"
+      SEAL_URL: ${SEAL_URL:-http://localhost:47803}
+      CONSOLE_URL: ${CONSOLE_URL:-http://localhost:47804}
+      # SMTP — unset by default. Set real values (and SMTP_ENABLED=true) in .env.
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-VERITAS ACPIA <noreply@acpia.gov.in>}
+      SMTP_ENABLED: ${SMTP_ENABLED:-false}
     ports:
       - "47802:47802"
     depends_on:

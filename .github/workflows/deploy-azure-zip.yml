@@ -1,0 +1,62 @@
+name: Deploy to Azure App Service (zip / Oryx)
+
+# Fallback path for the two Next.js apps ONLY (seal, police-console) — use
+# this if DevOps provisions the App Service(s) as a plain "Node 20" code
+# stack instead of "Docker Container", or if you only get one App Service
+# and need to pick a lighter deploy method.
+#
+# The backend is NOT included here on purpose: it depends on OS packages
+# (tesseract-ocr, exiftool, ffmpeg, libmagic) that a code-only zip deploy
+# has no reliable way to install. Deploy the backend as a container via
+# deploy.yml — see DEPLOYMENT.md.
+#
+# Before running this, on each target App Service set:
+#   - Configuration → General settings → Stack: Node 20 LTS
+#   - Configuration → Application settings:
+#       SCM_DO_BUILD_DURING_DEPLOYMENT = true
+#       NEXT_PUBLIC_API_URL             = https://<your-backend>.azurewebsites.net
+#       NEXT_PUBLIC_WS_URL               = wss://<your-backend>.azurewebsites.net   (console only)
+#       NEXT_PUBLIC_SHOW_DEMO_CREDENTIALS = false                                    (console only)
+#   - Configuration → General settings → Startup Command: next start -p 8080
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Which app to deploy"
+        required: true
+        type: choice
+        options: [seal, console, both]
+
+jobs:
+  deploy-seal:
+    if: ${{ inputs.target == 'seal' || inputs.target == 'both' }}
+    runs-on: ubuntu-latest
+    environment: production
+    defaults:
+      run:
+        working-directory: seal
+    steps:
+      - uses: actions/checkout@v4
+      - run: zip -r ../seal-release.zip . -x "node_modules/*" ".next/*" ".git/*"
+      - uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_SEAL_APP_NAME }}
+          publish-profile: ${{ secrets.AZURE_SEAL_PUBLISH_PROFILE }}
+          package: seal-release.zip
+
+  deploy-console:
+    if: ${{ inputs.target == 'console' || inputs.target == 'both' }}
+    runs-on: ubuntu-latest
+    environment: production
+    defaults:
+      run:
+        working-directory: police-console
+    steps:
+      - uses: actions/checkout@v4
+      - run: zip -r ../console-release.zip . -x "node_modules/*" ".next/*" ".git/*"
+      - uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_CONSOLE_APP_NAME }}
+          publish-profile: ${{ secrets.AZURE_CONSOLE_PUBLISH_PROFILE }}
+          package: console-release.zip

@@ -31,6 +31,13 @@ COPY . .
 # Create required directories
 RUN mkdir -p /tmp/uploads /data/known_hashes ./storage
 
+# Run as non-root: this process handles untrusted uploads and evidence
+# files, so a container-escape or path-traversal bug shouldn't also hand
+# the attacker root inside the container.
+RUN useradd --create-home --uid 1000 acpia \
+    && chown -R acpia:acpia /app /tmp/uploads /data
+USER acpia
+
 EXPOSE 47802
 
 CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "47802"]

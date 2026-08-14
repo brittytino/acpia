@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, Query
+from fastapi import APIRouter, Depends, HTTPException, Response, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.database import get_db
@@ -22,10 +22,16 @@ router = APIRouter(prefix="/cases", tags=["reports"])
 async def user_from_query_token(
     db: AsyncSession,
     token: str | None,
+    request: Request | None = None,
 ) -> User:
-    """Report links are opened via `window.open(...)`, which cannot set an
-    Authorization header — so these two endpoints accept the JWT as a query
-    param instead. Same token, same validation, just a different transport."""
+    """Prefer a real Authorization header (what the Console now sends, via
+    fetch()+blob rather than window.open()). Query-param token stays as a
+    fallback for any caller that can't set a header — but a token in the URL
+    ends up in browser history and server logs, so it's the last resort."""
+    if request is not None:
+        auth = request.headers.get("authorization", "")
+        if auth.lower().startswith("bearer "):
+            token = auth[7:]
     if not token:
         raise HTTPException(401, "Missing token")
     try:
@@ -183,8 +189,8 @@ def build_case_report(case, confirmed_leads, confirmed_contradictions, officer) 
 
 
 @router.get("/{case_id}/certificate")
-async def get_certificate(case_id: UUID, token: str | None = Query(None), db: AsyncSession = Depends(get_db)):
-    officer = await user_from_query_token(db, token)
+async def get_certificate(case_id: UUID, request: Request, token: str | None = Query(None), db: AsyncSession = Depends(get_db)):
+    officer = await user_from_query_token(db, token, request)
 
     case = (await db.execute(select(Case).where(Case.id == case_id))).scalars().first()
     if not case:
@@ -199,8 +205,8 @@ async def get_certificate(case_id: UUID, token: str | None = Query(None), db: As
 
 
 @router.get("/{case_id}/report")
-async def get_case_report(case_id: UUID, token: str | None = Query(None), db: AsyncSession = Depends(get_db)):
-    officer = await user_from_query_token(db, token)
+async def get_case_report(case_id: UUID, request: Request, token: str | None = Query(None), db: AsyncSession = Depends(get_db)):
+    officer = await user_from_query_token(db, token, request)
 
     case = (await db.execute(select(Case).where(Case.id == case_id))).scalars().first()
     if not case:

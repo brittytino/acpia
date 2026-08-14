@@ -10,7 +10,7 @@ import json
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.evidence import CustodyLog
@@ -41,6 +41,14 @@ async def write_custody(
     detail: dict | None = None,
 ) -> str:
     """Append a tamper-evident entry, chained to the previous one for this case."""
+    # Serialize concurrent writers for the same case within this transaction.
+    # Without this, two requests touching the same case (e.g. two officers
+    # uploading evidence at once) can both read the same "last hash" and
+    # both insert with the same prev_hash, forking the chain — verify_chain
+    # would then report a false tamper alarm on what was really just a race.
+    # pg_advisory_xact_lock auto-releases at commit/rollback of this txn.
+    await db.execute(text("SELECT pg_advisory_xact_lock(hashtext(:key))"), {"key": str(case_id)})
+
     prev = (await db.execute(
         select(CustodyLog.entry_hash)
         .where(CustodyLog.case_id == case_id)

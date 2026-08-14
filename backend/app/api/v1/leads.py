@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from app.database import get_db
 from app.models.lead import Lead
@@ -72,13 +72,22 @@ async def confirm_lead(
     lead = result.scalar_one_or_none()
     if not lead:
         raise HTTPException(404, "Lead not found")
-    if lead.status != "proposed":
-        raise HTTPException(409, "Lead has already been judged.")
 
-    # ONLY place in the codebase that sets status=confirmed
+    judged_at = datetime.now(timezone.utc)
+    # Atomic, condition-on-write: two concurrent confirm/reject calls on the
+    # same lead can otherwise both pass a plain status-check-then-write and
+    # both commit, leaving contradictory CONFIRMED + REJECTED custody
+    # entries for one lead. The WHERE clause makes only the first writer win.
+    claim = await db.execute(
+        update(Lead)
+        .where(Lead.id == lead_id, Lead.status == "proposed")
+        .values(status="confirmed", judged_by=current_user.id, judged_at=judged_at)
+    )
+    if claim.rowcount == 0:
+        raise HTTPException(409, "Lead has already been judged.")
     lead.status = "confirmed"
     lead.judged_by = current_user.id
-    lead.judged_at = datetime.now(timezone.utc)
+    lead.judged_at = judged_at
 
     await write_custody(
         db, lead.case_id, current_user.id,
@@ -109,12 +118,18 @@ async def reject_lead(
     lead = result.scalar_one_or_none()
     if not lead:
         raise HTTPException(404, "Lead not found")
-    if lead.status != "proposed":
-        raise HTTPException(409, "Lead has already been judged.")
 
+    judged_at = datetime.now(timezone.utc)
+    claim = await db.execute(
+        update(Lead)
+        .where(Lead.id == lead_id, Lead.status == "proposed")
+        .values(status="rejected", judged_by=current_user.id, judged_at=judged_at)
+    )
+    if claim.rowcount == 0:
+        raise HTTPException(409, "Lead has already been judged.")
     lead.status = "rejected"
     lead.judged_by = current_user.id
-    lead.judged_at = datetime.now(timezone.utc)
+    lead.judged_at = judged_at
 
     await write_custody(
         db, lead.case_id, current_user.id,

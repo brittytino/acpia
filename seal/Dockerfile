@@ -7,6 +7,13 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# Next.js inlines NEXT_PUBLIC_* variables into the client bundle at build
+# time, not at container start — so these must be passed as build args
+# (docker build --build-arg / GitHub Actions `build-args:`), not just as
+# runtime container env vars, or the deployed app silently keeps talking
+# to localhost.
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 RUN npm run build
 
 FROM node:20-alpine AS runner

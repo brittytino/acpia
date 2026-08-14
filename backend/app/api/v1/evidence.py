@@ -88,8 +88,9 @@ async def upload_evidence(
     if not case_result.scalar_one_or_none():
         raise HTTPException(404, "Case not found")
 
-    content = await file.read()
-    if len(content) > settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024:
+    max_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
+    content = await file.read(max_bytes + 1)
+    if len(content) > max_bytes:
         raise HTTPException(413, "File too large")
 
     actual_sha256 = hashlib.sha256(content).hexdigest()
@@ -101,17 +102,20 @@ async def upload_evidence(
     if existing:
         raise HTTPException(409, "This exact file (same SHA-256) is already in this case.")
 
-    # Store file
+    # Store file. Strip any directory components from the client-supplied
+    # filename first — otherwise a name like "../../../etc/cron.d/x" escapes
+    # storage_dir entirely (Path() does not confine `/` on join).
+    safe_filename = Path(file.filename or "unknown").name
     storage_dir = Path(settings.STORAGE_PATH) / "cases" / str(case_id)
     storage_dir.mkdir(parents=True, exist_ok=True)
-    storage_path = storage_dir / f"{actual_sha256[:16]}_{file.filename}"
+    storage_path = storage_dir / f"{actual_sha256[:16]}_{safe_filename}"
     storage_path.write_bytes(content)
 
     # Create evidence record
     ev = Evidence(
         case_id=case_id,
         acquisition_id=UUID(acquisition_id) if acquisition_id else None,
-        filename=file.filename or "unknown",
+        filename=safe_filename,
         mime_type=file.content_type or "application/octet-stream",
         size_bytes=len(content),
         sha256=actual_sha256,
@@ -162,7 +166,10 @@ async def import_zip(
     """Import a forensic export ZIP — USB acquisition fallback."""
     import zipfile, io
 
-    content = await file.read()
+    max_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
+    content = await file.read(max_bytes + 1)
+    if len(content) > max_bytes:
+        raise HTTPException(413, "File too large")
     imported = []
 
     acq = Acquisition(
@@ -176,10 +183,16 @@ async def import_zip(
 
     try:
         with zipfile.ZipFile(io.BytesIO(content)) as zf:
-            for name in zf.namelist():
-                if name.endswith("/"):
+            infos = [i for i in zf.infolist() if not i.filename.endswith("/")]
+            if len(infos) > 5000:
+                raise HTTPException(413, "Archive has too many entries.")
+            for info in infos:
+                # Guard against zip bombs: check declared decompressed size
+                # before inflating, not after.
+                if info.file_size > max_bytes:
                     continue
-                file_bytes = zf.read(name)
+                name = info.filename
+                file_bytes = zf.read(info)
                 sha = hashlib.sha256(file_bytes).hexdigest()
                 import mimetypes
                 mime = mimetypes.guess_type(name)[0] or "application/octet-stream"
@@ -232,6 +245,10 @@ async def list_evidence(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    if current_user.role == "auditor":
+        # Auditors verify ledger integrity, not evidence content (VERITAS §4.6:
+        # "Metadata only"). Use GET /cases/{case_id}/audit for the chain view.
+        raise HTTPException(403, "Evidence content is not accessible to the auditor role.")
     result = await db.execute(
         select(Evidence).where(Evidence.case_id == case_id)
         .order_by(Evidence.created_at)
@@ -257,6 +274,8 @@ async def reveal_evidence(
     Log the reveal action and increment exposure counter.
     Required before viewing file content — this is the investigator-welfare feature.
     """
+    if current_user.role == "auditor":
+        raise HTTPException(403, "Evidence content is not accessible to the auditor role.")
     result = await db.execute(select(Evidence).where(Evidence.id == evidence_id))
     ev = result.scalar_one_or_none()
     if not ev:
