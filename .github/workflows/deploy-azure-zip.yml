@@ -30,9 +30,10 @@ on:
 
 jobs:
   deploy-seal:
-    if: ${{ inputs.target == 'seal' || inputs.target == 'both' }}
+    if: inputs.target == 'seal' || inputs.target == 'both'
     runs-on: ubuntu-latest
-    environment: production
+    environment:
+      name: production
     defaults:
       run:
         working-directory: seal
@@ -46,9 +47,10 @@ jobs:
           package: seal-release.zip
 
   deploy-console:
-    if: ${{ inputs.target == 'console' || inputs.target == 'both' }}
+    if: inputs.target == 'console' || inputs.target == 'both'
     runs-on: ubuntu-latest
-    environment: production
+    environment:
+      name: production
     defaults:
       run:
         working-directory: police-console

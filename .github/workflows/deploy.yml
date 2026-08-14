@@ -49,6 +49,7 @@ jobs:
         id: tags
         run: |
           OWNER_LC=$(echo "${{ env.IMAGE_OWNER }}" | tr '[:upper:]' '[:lower:]')
+          echo "owner_lc=$OWNER_LC" >> "$GITHUB_OUTPUT"
           echo "backend=${{ env.REGISTRY }}/$OWNER_LC/acpia-backend:${{ github.sha }}" >> "$GITHUB_OUTPUT"
           echo "seal=${{ env.REGISTRY }}/$OWNER_LC/acpia-seal:${{ github.sha }}" >> "$GITHUB_OUTPUT"
           echo "console=${{ env.REGISTRY }}/$OWNER_LC/acpia-console:${{ github.sha }}" >> "$GITHUB_OUTPUT"
@@ -60,7 +61,7 @@ jobs:
           push: true
           tags: |
             ${{ steps.tags.outputs.backend }}
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/acpia-backend:latest
+            ${{ env.REGISTRY }}/${{ steps.tags.outputs.owner_lc }}/acpia-backend:latest
 
       - name: Build and push seal
         uses: docker/build-push-action@v5
@@ -71,7 +72,7 @@ jobs:
             NEXT_PUBLIC_API_URL=${{ vars.SEAL_NEXT_PUBLIC_API_URL }}
           tags: |
             ${{ steps.tags.outputs.seal }}
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/acpia-seal:latest
+            ${{ env.REGISTRY }}/${{ steps.tags.outputs.owner_lc }}/acpia-seal:latest
 
       - name: Build and push console
         uses: docker/build-push-action@v5
@@ -84,12 +85,13 @@ jobs:
             NEXT_PUBLIC_SHOW_DEMO_CREDENTIALS=${{ vars.SHOW_DEMO_CREDENTIALS }}
           tags: |
             ${{ steps.tags.outputs.console }}
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/acpia-console:latest
+            ${{ env.REGISTRY }}/${{ steps.tags.outputs.owner_lc }}/acpia-console:latest
 
   deploy-backend:
     needs: build-and-push
     runs-on: ubuntu-latest
-    environment: production
+    environment:
+      name: production
     steps:
       - uses: azure/webapps-deploy@v3
         with:
@@ -100,7 +102,8 @@ jobs:
   deploy-seal:
     needs: build-and-push
     runs-on: ubuntu-latest
-    environment: production
+    environment:
+      name: production
     steps:
       - uses: azure/webapps-deploy@v3
         with:
@@ -111,7 +114,8 @@ jobs:
   deploy-console:
     needs: build-and-push
     runs-on: ubuntu-latest
-    environment: production
+    environment:
+      name: production
     steps:
       - uses: azure/webapps-deploy@v3
         with:
