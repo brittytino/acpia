@@ -142,6 +142,28 @@ export function EvidenceTile({ e, onRevealed }: { e: Evidence; onRevealed: () =>
             </div>
           )}
 
+          {/* Authenticity Indicators */}
+          {indicators.length > 0 && (
+            <div style={{ marginBottom: "6px" }}>
+              <div style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--gray-700)", marginBottom: "4px" }}>
+                Authenticity Indicators:
+              </div>
+              {indicators.map((ind: any, i: number) => (
+                <div key={i} style={{ 
+                  background: "var(--white)", border: "var(--border)", 
+                  borderLeft: `3px solid ${ind.severity === "high" ? "var(--error)" : ind.severity === "medium" ? "var(--warning)" : "var(--info)"}`,
+                  borderRadius: "var(--radius-sm)", padding: "6px 8px", marginBottom: "4px", fontSize: "0.6875rem" 
+                }}>
+                  <div style={{ fontWeight: 700, color: "var(--gray-900)" }}>{ind.kind.replace(/_/g, " ")}</div>
+                  <div style={{ color: "var(--gray-800)", marginTop: "2px", lineHeight: 1.4 }}>{ind.detail}</div>
+                  <div style={{ color: "var(--gray-500)", fontStyle: "italic", marginTop: "2px", lineHeight: 1.4 }}>
+                    Caveat: {ind.caveat}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* EXIF Metadata Summary */}
           {exifKeys.length > 0 && (
             <div style={{ fontSize: "0.6875rem", color: "var(--gray-600)" }}>
