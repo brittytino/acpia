@@ -101,28 +101,22 @@ async def create_sealed_report(body: SealReportCreate, db: AsyncSession = Depend
         from app.models.case import Case
         from app.models.dispute import DisputeCode
         from app.core.custody import write_custody
-
-        # Create the FAIR case
-        fair_case = Case(
-            reference=f"FAIR-{int(datetime.now(timezone.utc).timestamp())}",
-            title=f"Complaint filed via Seal Portal — {reference}",
-            case_type="fair",
-            status="awaiting_submissions",
-            # We use a system sentinel user — no investigator assigned yet
-            # Use report.id as a stand-in since we have no user here; we'll link to
-            # the sealed report's created_by placeholder.
-            # To avoid FK violation, we need an admin user. Find the first admin:
-            created_by=None,  # will be set below
-        )
-
         from sqlalchemy import select
         from app.models.user import User
+
         admin_user = (await db.execute(select(User).where(User.role == "admin").limit(1))).scalar_one_or_none()
         if admin_user is None:
             admin_user = (await db.execute(select(User).limit(1))).scalar_one_or_none()
 
         if admin_user:
-            fair_case.created_by = admin_user.id
+            # Create the FAIR case
+            fair_case = Case(
+                reference=f"FAIR-{int(datetime.now(timezone.utc).timestamp())}",
+                title=f"Complaint filed via Seal Portal — {reference}",
+                case_type="fair",
+                status="awaiting_submissions",
+                created_by=admin_user.id,
+            )
             db.add(fair_case)
             await db.flush()
 
