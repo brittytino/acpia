@@ -51,8 +51,9 @@ async def lifespan(app: FastAPI):
     import os
     os.makedirs(settings.STORAGE_PATH, exist_ok=True)
 
-    # Warm models
-    await _warm_models()
+    # Warm models asynchronously so server starts immediately
+    import asyncio
+    asyncio.create_task(_warm_models())
 
     log.info(f"✅ ACPIA ready on port {settings.BACKEND_PORT}")
     yield

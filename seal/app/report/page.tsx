@@ -73,23 +73,35 @@ Please look up this reference code. It contains a cryptographic record of my evi
 I am requesting that this evidence be added to a formal complaint.`;
 
   return (
-    <main className="page-content">
-      <div className="container fade-in">
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2rem" }}>
-          <button className="btn btn-ghost" onClick={() => router.back()} style={{ padding: "0.5rem 0.75rem" }}>
+    <main className="layout-centered-form fade-in">
+      <div className="premium-card-container" style={{ maxWidth: "800px", margin: "0 auto" }}>
+        
+        {/* Header & Steps */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "3rem" }}>
+          <button className="btn btn-ghost" onClick={() => router.back()} style={{ border: "1px solid var(--rule)", padding: "0.5rem 1rem", borderRadius: "var(--radius-sm)" }}>
             ← Back
           </button>
-          <span style={{ color: "var(--ink-faint)", fontSize: "0.875rem" }}>Step 4 of 4</span>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <span style={{ color: "var(--ink-soft)", fontSize: "0.85rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.5rem" }}>Step 4 of 4</span>
+            <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+              <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: "var(--rule)", color: "var(--ink-faint)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", fontWeight: 600 }}>1</div>
+              <div style={{ width: "40px", height: "2px", background: "var(--rule)" }}></div>
+              <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: "var(--rule)", color: "var(--ink-faint)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", fontWeight: 600 }}>2</div>
+              <div style={{ width: "40px", height: "2px", background: "var(--rule)" }}></div>
+              <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: "var(--calm)", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", fontWeight: 600 }}>3</div>
+            </div>
+          </div>
+          <div style={{ padding: "0.5rem 1rem", background: "rgba(29, 89, 86, 0.05)", color: "var(--calm)", borderRadius: "var(--radius-sm)", fontSize: "0.85rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            🛡️ Secure & Confidential
+          </div>
         </div>
 
-        <div className="progress-bar" style={{ marginBottom: "2rem" }}>
-          <div className="progress-fill" style={{ width: "100%" }} />
+        <div style={{ textAlign: "center", marginBottom: "3rem" }}>
+          <h2 style={{ fontSize: "2rem", fontFamily: "'Playfair Display', serif", color: "var(--ink)", marginBottom: "0.75rem" }}>Your reference code</h2>
+          <p style={{ color: "var(--ink-soft)", fontSize: "0.95rem" }}>
+            Give this to the police. They can look up everything you sealed, exactly as you sealed it.
+          </p>
         </div>
-
-        <h2 style={{ marginBottom: "0.5rem" }}>Your reference code</h2>
-        <p style={{ marginBottom: "1.5rem" }}>
-          Give this to the police. They can look up everything you sealed, exactly as you sealed it.
-        </p>
 
         {/* Reference code — large, copyable */}
         <div style={{

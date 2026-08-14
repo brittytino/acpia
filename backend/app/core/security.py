@@ -5,13 +5,20 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from passlib.context import CryptContext
 from app.config import settings
 
-pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
+import bcrypt
 
 def hash_password(p: str) -> str:
-    return pwd.hash(p)
+    pwd_bytes = p.encode('utf-8')[:72]
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(pwd_bytes, salt).decode('utf-8')
 
 def verify_password(p: str, h: str) -> bool:
-    return pwd.verify(p, h)
+    try:
+        pwd_bytes = p.encode('utf-8')[:72]
+        h_bytes = h.encode('utf-8')
+        return bcrypt.checkpw(pwd_bytes, h_bytes)
+    except Exception:
+        return False
 
 def issue_token(user_id: str, role: str) -> str:
     return jwt.encode(

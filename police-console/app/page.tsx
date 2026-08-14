@@ -17,13 +17,14 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      const form = new FormData();
-      form.append("username", username);
-      form.append("password", password);
-      const res = await fetch(`${API}/api/v1/auth/login`, { method: "POST", body: form });
+      const res = await fetch(`${API}/api/v1/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+      });
       if (!res.ok) throw new Error("Invalid credentials");
       const data = await res.json();
-      localStorage.setItem("acpia_token", data.access_token);
+      localStorage.setItem("acpia_token", data.token || data.access_token);
       localStorage.setItem("acpia_user", JSON.stringify({ username: data.username, role: data.role }));
       router.push("/dashboard");
     } catch {
@@ -35,14 +36,14 @@ export default function LoginPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--void)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ width: "100%", maxWidth: "380px", padding: "1.5rem" }}>
+      <div className="premium-glass-card" style={{ width: "100%", maxWidth: "420px", padding: "2.5rem 2rem", margin: "1rem" }}>
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
-          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "0.75rem", color: "var(--text-faint)", marginBottom: "0.5rem", letterSpacing: "0.12em" }}>
+          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "0.75rem", color: "var(--steel)", marginBottom: "0.5rem", letterSpacing: "0.12em", fontWeight: 600 }}>
             ACPIA CONSOLE
           </div>
-          <h1 style={{ fontSize: "1.25rem", color: "var(--text)" }}>Agentic Child Protection</h1>
-          <p style={{ color: "var(--text-dim)", fontSize: "0.875rem", marginTop: "0.25rem" }}>
+          <h1 style={{ fontSize: "1.5rem", color: "var(--ink)", marginBottom: "0.25rem" }}>Agentic Child Protection</h1>
+          <p style={{ color: "var(--ink-soft)", fontSize: "0.875rem", marginTop: "0.25rem" }}>
             Intelligence Architecture v3
           </p>
         </div>
@@ -86,6 +87,11 @@ export default function LoginPage() {
         </form>
 
         <div style={{ marginTop: "2rem", textAlign: "center" }}>
+          <div style={{ background: "var(--verified-bg)", border: "1px solid rgba(29, 89, 86, 0.2)", borderRadius: "var(--radius-sm)", padding: "1rem", marginBottom: "1.5rem", fontSize: "0.8rem", color: "var(--ink)", textAlign: "left" }}>
+            <div style={{ fontWeight: 600, marginBottom: "0.5rem", color: "var(--ink)" }}>🔑 Demo Login Credentials:</div>
+            <div style={{ marginBottom: "0.25rem" }}>• Username: <code style={{ color: "var(--steel)", fontWeight: 600, background: "rgba(255,255,255,0.5)", padding: "2px 4px", borderRadius: "4px" }}>investigator</code></div>
+            <div>• Password: <code style={{ color: "var(--steel)", fontWeight: 600, background: "rgba(255,255,255,0.5)", padding: "2px 4px", borderRadius: "4px" }}>password123</code></div>
+          </div>
           <p style={{ fontSize: "0.75rem", color: "var(--text-faint)" }}>
             Authorised law enforcement only. All access is logged.
           </p>

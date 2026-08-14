@@ -2,26 +2,29 @@
 
 /* ── ACPIA Seal Design Tokens — §9.1 Light, calm, unhurried ── */
 :root {
-  --paper:      #F7F9FA;   /* cool soft paper */
+  /* Premium Palette */
+  --paper:      #FDFBF7;   /* warm ivory / alabaster */
   --card:       #FFFFFF;
-  --ink:        #1A2430;
-  --ink-soft:   #56646F;
-  --ink-faint:  #93A0AA;
-  --rule:       #E2E8EC;
-  --calm:       #2E6E6B;   /* deep teal — primary action */
-  --calm-hi:    #3A8B87;
-  --seal:       #B4762A;   /* wax-seal amber — the seal action ONLY */
-  --seal-hi:    #C98A34;
-  --help:       #3D5A80;   /* helpline links */
-  --help-hi:    #4D6E99;
-  --success:    #2D7A4F;
-  --error:      #9B3B3B;
-  --shadow-sm:  0 1px 3px rgba(26,36,48,0.06), 0 1px 2px rgba(26,36,48,0.04);
-  --shadow-md:  0 4px 12px rgba(26,36,48,0.08), 0 2px 4px rgba(26,36,48,0.04);
-  --shadow-lg:  0 12px 32px rgba(26,36,48,0.12), 0 4px 8px rgba(26,36,48,0.06);
-  --radius-sm:  6px;
-  --radius-md:  12px;
-  --radius-lg:  20px;
+  --ink:        #0B1B36;   /* midnight navy */
+  --ink-soft:   #3B4E68;
+  --ink-faint:  #879CB1;
+  --rule:       #EAECEE;
+  --calm:       #1D5956;   /* refined sage green */
+  --calm-hi:    #267571;
+  --seal:       #B4863A;   /* elegant muted gold */
+  --seal-hi:    #D4A14A;
+  --help:       #0F2E5D;   /* deep slate blue */
+  --help-hi:    #184587;
+  --success:    #1D5956;
+  --error:      #9E3935;   /* terracotta */
+  
+  /* High-end Depth */
+  --shadow-sm:  0 2px 8px rgba(11, 27, 54, 0.04), 0 1px 2px rgba(11, 27, 54, 0.02);
+  --shadow-md:  0 8px 24px rgba(11, 27, 54, 0.06), 0 4px 8px rgba(11, 27, 54, 0.03);
+  --shadow-lg:  0 24px 48px rgba(11, 27, 54, 0.08), 0 12px 24px rgba(11, 27, 54, 0.04);
+  --radius-sm:  8px;
+  --radius-md:  16px;
+  --radius-lg:  24px;
 }
 
 /* ── Reset & Base ── */
@@ -64,6 +67,91 @@ p  { color: var(--ink-soft); }
 }
 
 /* ── Cards ── */
+.card {
+  background: var(--card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--rule);
+  padding: 1.5rem 0;
+}
+
+/* ── Premium Layout Utilities ── */
+
+.layout-split {
+  display: flex;
+  min-height: calc(100vh - 60px); /* header offset */
+  background: var(--paper);
+}
+
+.layout-anchor {
+  flex: 0 0 45%;
+  background: linear-gradient(180deg, rgba(253, 251, 247, 0) 0%, rgba(253, 251, 247, 0.9) 80%, var(--paper) 100%), var(--calm);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 4rem;
+}
+
+.layout-anchor-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  opacity: 0.6;
+}
+
+.layout-anchor-content {
+  position: relative;
+  z-index: 1;
+}
+
+.layout-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem;
+}
+
+.premium-card-container {
+  max-width: 600px;
+  width: 100%;
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 3rem;
+  border: 1px solid rgba(255,255,255,0.6);
+  position: relative;
+}
+
+@media (max-width: 900px) {
+  .layout-split {
+    flex-direction: column;
+  }
+  .layout-anchor {
+    flex: 0 0 auto;
+    padding: 2rem;
+    min-height: 40vh;
+  }
+  .layout-content {
+    padding: 2rem 1rem;
+  }
+  .premium-card-container {
+    padding: 2rem;
+  }
+}
+
+.layout-centered-form {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 3rem 1rem;
+}
+
 .card {
   background: var(--card);
   border-radius: var(--radius-md);

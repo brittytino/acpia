@@ -1,29 +1,33 @@
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
 
-/* ── ACPIA Console Design Tokens — §9.2 Dark, cold, institutional ── */
+/* ── ACPIA Console Design Tokens — Unified Light Premium Theme ── */
 :root {
-  --void:       #0E1116;   /* deepest bg */
-  --slate:      #161B22;   /* panels */
-  --slate-hi:   #1E252E;   /* elevated cards */
-  --rule:       #2A323D;   /* borders */
-  --text:       #D6DEE8;   /* primary text */
-  --text-dim:   #7D8998;   /* secondary text */
-  --text-faint: #4E5865;   /* disabled, metadata */
-  --steel:      #4A7FA5;   /* structure, links, graph edges */
-  --steel-hi:   #5A96C0;
-  --pending:    #C9922E;   /* awaiting human judgment — the signature state */
-  --pending-bg: rgba(201,146,46,0.08);
-  --verified:   #3E8C7E;   /* integrity verified */
-  --verified-bg:rgba(62,140,126,0.08);
-  --rejected:   #8C4A52;
-  --rejected-bg:rgba(140,74,82,0.08);
-  --integrity:  #A8524F;   /* hash mismatch — the only true alarm */
-  --shadow-sm:  0 1px 3px rgba(0,0,0,0.3);
-  --shadow-md:  0 4px 16px rgba(0,0,0,0.4);
-  --shadow-lg:  0 12px 40px rgba(0,0,0,0.5);
-  --radius-sm:  4px;
-  --radius-md:  8px;
-  --radius-lg:  12px;
+  /* Premium Light Mode Palette (Uniform with Seal) */
+  --void:       #FDFBF7;   /* deep oceanic dark -> warm ivory/alabaster */
+  --slate:      #FFFFFF;   /* panels -> white */
+  --slate-hi:   #F3F5F7;   /* elevated cards -> subtle gray */
+  --rule:       #EAECEE;   /* borders -> light gray */
+  --text:       #0B1B36;   /* primary text -> midnight navy */
+  --text-dim:   #3B4E68;   /* secondary text -> soft navy */
+  --text-faint: #879CB1;   /* disabled, metadata -> slate */
+  
+  --steel:      #1D5956;   /* structure, links, graph edges -> refined sage green */
+  --steel-hi:   #267571;
+  --pending:    #B4863A;   /* muted gold */
+  --pending-bg: rgba(180, 134, 58, 0.08);
+  --verified:   #1D5956;   /* sage green */
+  --verified-bg:rgba(29, 89, 86, 0.08);
+  --rejected:   #9E3935;   /* terracotta/warning */
+  --rejected-bg:rgba(158, 57, 53, 0.08);
+  --integrity:  #9E3935;   /* deep alarm red */
+  
+  /* High-end Depth */
+  --shadow-sm:  0 2px 8px rgba(11, 27, 54, 0.04), 0 1px 2px rgba(11, 27, 54, 0.02);
+  --shadow-md:  0 8px 24px rgba(11, 27, 54, 0.06), 0 4px 8px rgba(11, 27, 54, 0.03);
+  --shadow-lg:  0 24px 48px rgba(11, 27, 54, 0.08), 0 12px 24px rgba(11, 27, 54, 0.04);
+  --radius-sm:  8px;
+  --radius-md:  16px;
+  --radius-lg:  24px;
 }
 
 /* ── Reset ── */
@@ -41,7 +45,7 @@ body {
   background: var(--void);
   color: var(--text);
   min-height: 100vh;
-  overflow-x: hidden;
+  overflow: hidden; /* Enforce full screen fixed layout */
 }
 
 /* ── Typography — facts in mono, interpretations in sans ── */
@@ -100,9 +104,43 @@ p  { color: var(--text-dim); }
   overflow-y: auto;
 }
 
-.main-content {
-  padding: 1.5rem;
+.main-view {
+  /* Remove outer padding to allow full-bleed layouts */
+  padding: 0;
   overflow-y: auto;
+  height: calc(100vh - 48px);
+  background: var(--void);
+}
+
+/* Premium Layout Utilities */
+.premium-glass-card {
+  background: var(--card, #FFFFFF);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.premium-glass-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: rgba(0,0,0,0.1);
+}
+
+.timeline-canvas {
+  background: linear-gradient(180deg, var(--void) 0%, var(--slate) 100%);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+}
+
+/* ── Panel / Workspace ── */
+.panel {
+  background: var(--slate);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
 }
 
 /* ── Nav ── */
