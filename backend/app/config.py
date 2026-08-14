@@ -44,10 +44,13 @@ class Settings(BaseSettings):
 
     # ── CORS ─────────────────────────────────────────────
     CORS_ORIGINS: List[str] = [
-        "http://localhost:47803",   # seal
-        "http://localhost:47804",   # console
+        "*",
+        "http://localhost:47803",
+        "http://localhost:47804",
         "http://127.0.0.1:47803",
         "http://127.0.0.1:47804",
+        "http://192.168.11.65:47803",
+        "http://192.168.11.65:47804",
     ]
 
     # ── VERITAS frontends (QR pairing / dispute links) ────

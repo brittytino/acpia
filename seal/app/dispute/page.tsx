@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, Suspense } from "react";
 import { sealFile, formatHash, formatSize, type SealResult } from "@/lib/seal";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:47802";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? `http://${window.location.hostname}:47802` : "http://localhost:47802");
 
 type Step = "code" | "seal" | "statement" | "done";
 

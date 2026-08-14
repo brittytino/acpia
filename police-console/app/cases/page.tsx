@@ -3,7 +3,7 @@ import { Shell } from "../components/Shell";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:47802";
+const API = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? `http://${window.location.hostname}:47802` : "http://localhost:47802");
 
 export default function CasesList() {
   const [cases, setCases] = useState<any[]>([]);
