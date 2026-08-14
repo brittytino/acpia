@@ -24,7 +24,9 @@ export function EscalationTimeline({ conversation }: { conversation: any }) {
       stage: m.stage,
       time: d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       sender: m.sender,
-      span: m.evidence_span
+      span: m.evidence_span,
+      language: m.language,
+      tamil_share: m.tamil_share
     };
   }).filter((d: any) => d.y > 0); // Ignore 'none' for clear trend visualization
 
@@ -45,7 +47,10 @@ export function EscalationTimeline({ conversation }: { conversation: any }) {
         <div style={{ background: "var(--slate-hi)", border: "1px solid var(--rule)", padding: "0.75rem", borderRadius: "var(--radius-sm)", boxShadow: "var(--shadow-md)" }}>
           <div className="label" style={{ color: "var(--steel)", marginBottom: "0.25rem" }}>{d.stage.replace('_', ' ')}</div>
           <div style={{ fontSize: "0.8125rem", color: "var(--text)", marginBottom: "0.25rem" }}>{d.time}</div>
-          <div style={{ fontSize: "0.8125rem", color: "var(--text-dim)", marginBottom: "0.25rem" }}>Sender: {d.sender}</div>
+          <div style={{ fontSize: "0.8125rem", color: "var(--text-dim)", marginBottom: "0.25rem", display: "flex", justifyContent: "space-between" }}>
+            <span>Sender: {d.sender}</span>
+            {d.language && <span style={{ background: "var(--void)", border: "1px solid var(--rule)", padding: "1px 4px", borderRadius: "4px" }}>{d.language} ({(d.tamil_share * 100).toFixed(0)}% ta)</span>}
+          </div>
           <div className="mono" style={{ fontSize: "0.75rem", color: "var(--text-faint)" }}>Conf: {(d.z * 100).toFixed(1)}% | {d.span}</div>
         </div>
       );
@@ -112,6 +117,36 @@ export function EscalationTimeline({ conversation }: { conversation: any }) {
       <div className="label" style={{ textAlign: "right", marginTop: "0.5rem" }}>
         Opacity indicates classification confidence
       </div>
+      
+      {conversation.code_switch && (
+        <div style={{ marginTop: "1.5rem", borderTop: "1px solid var(--rule)", paddingTop: "1rem" }}>
+          <div className="mono" style={{ fontSize: "0.75rem", color: "var(--text-faint)", marginBottom: "0.5rem", display: "flex", justifyContent: "space-between" }}>
+            <span>language</span>
+            <span>window 1 to {conversation.code_switch.windows.length}</span>
+          </div>
+          <div style={{ display: "flex", gap: "2px", height: "24px" }}>
+            {conversation.code_switch.windows.map((w: number, i: number) => (
+              <div key={i} style={{ 
+                flex: 1, 
+                background: `rgba(62,140,126,${w})`, 
+                border: "1px solid var(--rule)",
+                position: "relative" 
+              }}>
+                <span className="mono" style={{ position: "absolute", bottom: "-20px", left: "50%", transform: "translateX(-50%)", fontSize: "10px", color: "var(--text-dim)", whiteSpace: "nowrap" }}>
+                  {(w * 100).toFixed(0)}% ta
+                </span>
+              </div>
+            ))}
+          </div>
+          {conversation.code_switch.delta > 0.12 && (
+            <div style={{ marginTop: "2.5rem", color: "var(--pending)", fontSize: "0.875rem", fontWeight: 500, display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
+              <span className="badge badge-pending">⚠ CODE-SWITCH DRIFT</span>
+              <span style={{ color: "var(--text)" }}>{conversation.code_switch.direction.replace('_', ' ')}, {(conversation.code_switch.delta > 0 ? "+" : "")}{conversation.code_switch.delta.toFixed(2)} across the conversation</span>
+              <span style={{ color: "var(--text-faint)", fontSize: "0.75rem", marginLeft: "auto" }}>Surfaced as a signal. Requires investigator verification.</span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

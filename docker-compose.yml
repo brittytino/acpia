@@ -1,34 +1,36 @@
-version: '3.8'
-
 services:
   postgres:
     image: pgvector/pgvector:pg16
     container_name: acpia-postgres
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
       POSTGRES_DB: acpia
+      POSTGRES_USER: acpia
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:47800:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - acpia_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U acpia -d acpia"]
+      interval: 5s
+      retries: 10
 
   ollama:
-    image: ollama/ollama
+    image: ollama/ollama:latest
     container_name: acpia-ollama
     ports:
-      - "11434:11434"
+      - "127.0.0.1:47801:11434"
     volumes:
-      - ollama_data:/root/.ollama
+      - acpia_ollama:/root/.ollama
     # If you have an NVIDIA GPU, uncomment the following:
     # deploy:
     #   resources:
     #     reservations:
     #       devices:
     #         - driver: nvidia
-    #           count: 1
+    #           count: all
     #           capabilities: [gpu]
 
 volumes:
-  postgres_data:
-  ollama_data:
+  acpia_pgdata:
+  acpia_ollama:

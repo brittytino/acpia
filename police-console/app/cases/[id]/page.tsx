@@ -5,7 +5,8 @@ import { KnowledgeGraph } from "../../components/KnowledgeGraph";
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8765";
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:47802";
+const WS_API = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:47802";
 
 export default function CaseWorkspace({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -47,25 +48,44 @@ export default function CaseWorkspace({ params }: { params: { id: string } }) {
     fetchCaseData();
 
     // WebSocket connection
-    ws.current = new WebSocket(API.replace('http', 'ws') + `/api/v1/cases/${params.id}/stream`);
+    ws.current = new WebSocket(`${WS_API}/api/v1/cases/${params.id}/stream`);
     
     ws.current.onmessage = (event) => {
       const data = JSON.parse(event.data);
       console.log("WS Event:", data.event);
-      if (data.event === "pipeline.started") setPipelineRunning(true);
-      if (data.event === "pipeline.complete") {
-        setPipelineRunning(false);
-        fetchCaseData(); // Refresh all
-      }
-      if (data.event === "lead.created" || data.event === "lead.confirmed" || data.event === "lead.rejected") {
-        fetchCaseData();
+      switch (data.event) {
+        case "pipeline.started":
+          setPipelineRunning(true);
+          break;
+        case "pipeline.complete":
+          setPipelineRunning(false);
+          setImpact(data.payload);
+          fetchCaseData(); // Refresh all
+          break;
+        case "narrative.trajectory_computed":
+          // Refresh active convo if it's the one that was updated
+          if (activeConvo && activeConvo.conversation_id === data.payload.conversation_id) {
+            setActiveConvo(data.payload);
+          }
+          break;
+        case "lead.created":
+        case "lead.confirmed":
+        case "lead.rejected":
+        case "evidence.revealed":
+          fetchCaseData();
+          break;
+        default:
+          break;
       }
     };
+    
+    const ping = setInterval(() => ws.current?.readyState === 1 && ws.current.send("ping"), 30000);
 
     return () => {
+      clearInterval(ping);
       if (ws.current) ws.current.close();
     };
-  }, [params.id]);
+  }, [params.id, activeConvo]);
 
   const fetchConvoTimeline = async (convoId: string) => {
     const token = localStorage.getItem("acpia_token");
