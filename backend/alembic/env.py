@@ -11,7 +11,10 @@ from app.config import settings
 from app.database import Base
 
 # Import all models so Alembic can detect them
-from app.models import User, Case, Evidence, Acquisition, CustodyLog, Lead, SealedReport, SealedArtifact, Conversation, Message, Node, Edge
+from app.models import (
+    User, Case, Evidence, Acquisition, CustodyLog, Lead, SealedReport, SealedArtifact,
+    Conversation, Message, Node, Edge, DisputeCode, PairingToken, Contradiction, CoSignRequest,
+)
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url_sync)

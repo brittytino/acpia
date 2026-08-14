@@ -48,6 +48,17 @@ class Evidence(Base):
     processed: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
+    # ── Two-score model (VERITAS §7): integrity vs authenticity ──────────
+    # Integrity is the binary SHA-256 question, derived from custody log actions.
+    # Authenticity is never a score — an indicator list, each with a caveat.
+    submitter_role: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    # complainant | respondent | null (ordinary GUARD evidence has no "side")
+    claimed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # when the submitter says the event/content occurred — compared against
+    # sealed_at and any embedded metadata to compute authenticity indicators
+    authenticity_indicators: Mapped[list] = mapped_column(JSONB, default=list)
+    # [{"kind": str, "detail": str, "caveat": str, "severity": "low"|"medium"|"high"}]
+
     case = relationship("Case", back_populates="evidence")
     acquisition = relationship("Acquisition", back_populates="evidence")
 
@@ -57,6 +68,10 @@ class Evidence(Base):
 
 
 class CustodyLog(Base):
+    """Append-only, hash-chained custody ledger (VERITAS §6.1).
+    Each entry embeds the previous entry's hash. Altering or deleting any
+    row breaks every hash after it — detectably, forever. UPDATE/DELETE are
+    also revoked at the database level for the app role (see database.py)."""
     __tablename__ = "custody_log"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -67,3 +82,5 @@ class CustodyLog(Base):
     target_id: Mapped[Optional[uuid.UUID]] = mapped_column(nullable=True)
     detail: Mapped[dict] = mapped_column(JSONB, default=dict)
     at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    prev_hash: Mapped[str] = mapped_column(String(64), nullable=False, default="0" * 64)
+    entry_hash: Mapped[str] = mapped_column(String(64), nullable=False, default="")

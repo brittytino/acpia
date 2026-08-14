@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-export function Shell({ children, title = "ACPIA CONSOLE" }: { children: React.ReactNode; title?: string }) {
+export function Shell({ children, title }: { children: React.ReactNode; title?: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<{ username: string; role: string } | null>(null);
@@ -25,43 +25,94 @@ export function Shell({ children, title = "ACPIA CONSOLE" }: { children: React.R
 
   if (!user) return null;
 
+  const navGroups = [
+    {
+      group: "Operational Triage",
+      items: [
+        { href: "/dashboard", label: "Dashboard", icon: "📊" },
+        { href: "/inbound", label: "Inbound Reports", icon: "📥" },
+      ],
+    },
+    {
+      group: "Forensic Cases",
+      items: [
+        { href: "/cases", label: "Active Cases", icon: "📁" },
+      ],
+    },
+    {
+      group: "Supervision & Audit",
+      items: [
+        { href: "/auditor", label: "Custody Auditor", icon: "⚖️" },
+      ],
+    },
+  ];
+
   return (
     <div className="app-shell">
       {/* Topbar */}
       <header className="topbar">
-        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "0.875rem", fontWeight: 600, letterSpacing: "0.1em", color: "var(--steel)" }}>
-          {title}
-        </div>
-        <div style={{ flex: 1 }} />
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem", fontSize: "0.875rem", color: "var(--text-dim)" }}>
-          <span>{user.username}</span>
-          <span style={{ background: "var(--slate-hi)", padding: "0.125rem 0.5rem", borderRadius: "100px", fontSize: "0.6875rem", textTransform: "uppercase" }}>
-            {user.role}
-          </span>
-          <button onClick={logout} className="btn-ghost" style={{ fontSize: "0.75rem", border: "none", cursor: "pointer", padding: "0.25rem" }}>
-            Sign out
+        <Link href="/dashboard" className="topbar-brand">
+          <img
+            src="/logo.png"
+            alt="VERITAS Logo"
+            className="topbar-logo-img"
+          />
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <span className="topbar-title">VERITAS CONSOLE</span>
+            <span className="topbar-badge">v6.0</span>
+          </div>
+        </Link>
+
+        {title && (
+          <div style={{ marginLeft: "24px", paddingLeft: "16px", borderLeft: "1px solid rgba(255,255,255,0.2)", fontSize: "0.8125rem", color: "rgba(255,255,255,0.85)", fontWeight: 700 }}>
+            {title}
+          </div>
+        )}
+
+        <div className="topbar-spacer" />
+
+        <div className="topbar-user">
+          <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.7)" }}>Investigating Unit:</span>
+          <strong>{user.username}</strong>
+          <span className="user-badge">{user.role}</span>
+          <button onClick={logout} className="btn-signout" title="Sign out of console">
+            Sign Out
           </button>
         </div>
       </header>
 
-      {/* Sidebar */}
+      {/* Fixed Sidebar */}
       <aside className="sidebar">
-        <div className="nav-section">Triage</div>
-        <Link href="/dashboard" className={`nav-item ${pathname === "/dashboard" ? "active" : ""}`}>
-          ◱ Dashboard
-        </Link>
-        <Link href="/inbound" className={`nav-item ${pathname.startsWith("/inbound") ? "active" : ""}`}>
-          downarrow Inbound Reports
-        </Link>
-        
-        <div className="nav-section" style={{ marginTop: "1rem" }}>Investigation</div>
-        <Link href="/cases" className={`nav-item ${pathname.startsWith("/cases") ? "active" : ""}`}>
-          ◫ Active Cases
-        </Link>
+        {navGroups.map((grp) => (
+          <div key={grp.group} style={{ marginBottom: "16px" }}>
+            <div className="nav-group-title">{grp.group}</div>
+            {grp.items.map((item) => {
+              const isActive = item.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`nav-item ${isActive ? "active" : ""}`}
+                >
+                  <span style={{ fontSize: "1rem", width: "20px", textAlign: "center" }}>{item.icon}</span>
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        ))}
+
+        <div style={{ padding: "16px 24px", marginTop: "32px", borderTop: "var(--border)" }}>
+          <div style={{ fontSize: "0.6875rem", color: "var(--gray-500)", lineHeight: 1.4 }}>
+            <strong>Air-Gapped LAN Security:</strong>
+            <br />
+            BSA §63 Forensic Hash Ledger
+          </div>
+        </div>
       </aside>
 
-      {/* Main */}
-      <main className="main-content">
+      {/* Main View Area */}
+      <main className="main-view">
         {children}
       </main>
     </div>

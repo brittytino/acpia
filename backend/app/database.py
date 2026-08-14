@@ -1,12 +1,29 @@
 """
 Database — Postgres + pgvector only. No MinIO, no Neo4j, no Redis.
+
+Two engines, two roles (VERITAS §6.2 — database-enforced append-only):
+  - `owner_engine` connects as the table-owning role. Used only for DDL:
+    creating tables and provisioning the runtime role's grants.
+  - `engine` (AsyncSessionLocal) connects as a separate, least-privilege
+    role that every request actually uses. That role has UPDATE and DELETE
+    explicitly revoked on custody_log — and because it does not own the
+    table, the revoke is real, not a no-op against owner privilege.
 """
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 from app.config import settings
 
-engine = create_async_engine(
+owner_engine = create_async_engine(
     settings.DATABASE_URL,
+    echo=False,
+    pool_pre_ping=True,
+    pool_size=5,
+    max_overflow=5,
+)
+
+engine = create_async_engine(
+    settings.DATABASE_URL_APP,
     echo=settings.DEBUG,
     pool_pre_ping=True,
     pool_size=10,
@@ -31,12 +48,46 @@ async def get_db():
 
 
 async def create_tables():
-    """Create all tables — Alembic handles migrations in production."""
-    # Enable pgvector and pgcrypto
-    async with engine.begin() as conn:
-        await conn.execute(__import__("sqlalchemy").text("CREATE EXTENSION IF NOT EXISTS vector"))
-        await conn.execute(__import__("sqlalchemy").text("CREATE EXTENSION IF NOT EXISTS pgcrypto"))
+    """Create all tables and provision the least-privilege runtime role.
+    Alembic handles migrations in production; this is the hackathon/dev path."""
+    async with owner_engine.begin() as conn:
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pgcrypto"))
 
-    async with engine.begin() as conn:
-        from app.models import user, case, evidence, lead, conversation, graph, seal
+    async with owner_engine.begin() as conn:
+        from app.models import (
+            user, case, evidence, lead, conversation, graph, seal,
+            dispute, pairing, contradiction, cosign,
+        )
         await conn.run_sync(Base.metadata.create_all)
+
+    await _provision_app_role()
+
+
+async def _provision_app_role():
+    """Idempotently create the runtime DB role and grant it broad DML —
+    except UPDATE/DELETE on custody_log, which stay revoked forever."""
+    role = settings.DB_APP_ROLE
+    async with owner_engine.begin() as conn:
+        exists = (await conn.execute(
+            text("SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = :role"),
+            {"role": role},
+        )).scalar()
+        if not exists:
+            # Postgres DDL does not accept bind parameters; this value comes
+            # from our own settings, not user input, so a literal is safe.
+            escaped_pw = settings.DB_APP_PASSWORD.replace("'", "''")
+            await conn.execute(text(f'CREATE ROLE "{role}" LOGIN PASSWORD \'{escaped_pw}\''))
+
+        await conn.execute(text(f'GRANT CONNECT ON DATABASE acpia TO "{role}"'))
+        await conn.execute(text(f'GRANT USAGE ON SCHEMA public TO "{role}"'))
+        await conn.execute(text(f'GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO "{role}"'))
+        await conn.execute(text(f'GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO "{role}"'))
+        await conn.execute(text(
+            f'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO "{role}"'
+        ))
+        await conn.execute(text(
+            f'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON SEQUENCES TO "{role}"'
+        ))
+        # The load-bearing line: append-only, enforced by Postgres itself.
+        await conn.execute(text(f'REVOKE UPDATE, DELETE ON custody_log FROM "{role}"'))

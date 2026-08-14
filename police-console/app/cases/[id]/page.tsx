@@ -2,11 +2,14 @@
 import { Shell } from "../../components/Shell";
 import { EscalationTimeline } from "../../components/EscalationTimeline";
 import { KnowledgeGraph } from "../../components/KnowledgeGraph";
+import { ContradictionBoard } from "../../components/ContradictionBoard";
+import { EvidenceTile } from "../../components/EvidenceTile";
+import { PairPanel } from "../../components/PairPanel";
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:47802";
-const WS_API = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:47802";
+const API = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? `http://${window.location.hostname}:47802` : "http://localhost:47802");
+const WS_API = process.env.NEXT_PUBLIC_WS_URL || (typeof window !== "undefined" ? `ws://${window.location.hostname}:47802` : "ws://localhost:47802");
 
 export default function CaseWorkspace({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -15,82 +18,99 @@ export default function CaseWorkspace({ params }: { params: { id: string } }) {
   const [conversations, setConversations] = useState<any[]>([]);
   const [graph, setGraph] = useState<any>({ nodes: [], edges: [] });
   const [leads, setLeads] = useState<any[]>([]);
+  const [contradictions, setContradictions] = useState<any[]>([]);
+  const [disputeCodes, setDisputeCodes] = useState<any[]>([]);
   const [impact, setImpact] = useState<any>(null);
-  
+
   const [activeConvo, setActiveConvo] = useState<any>(null);
   const [pipelineRunning, setPipelineRunning] = useState(false);
+  const [uploadRole, setUploadRole] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<string>("evidence");
   const ws = useRef<WebSocket | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchCaseData = async () => {
     const token = localStorage.getItem("acpia_token");
     const headers = { Authorization: `Bearer ${token}` };
-    
-    // Parallel fetching for speed
-    const [cRes, evRes, conRes, grRes, ldRes, imRes] = await Promise.all([
+
+    const [cRes, evRes, conRes, grRes, ldRes, imRes, ctRes] = await Promise.all([
       fetch(`${API}/api/v1/cases/${params.id}`, { headers }),
       fetch(`${API}/api/v1/cases/${params.id}/evidence`, { headers }),
       fetch(`${API}/api/v1/cases/${params.id}/conversations`, { headers }),
       fetch(`${API}/api/v1/cases/${params.id}/graph`, { headers }),
       fetch(`${API}/api/v1/cases/${params.id}/leads`, { headers }),
       fetch(`${API}/api/v1/cases/${params.id}/impact`, { headers }),
+      fetch(`${API}/api/v1/cases/${params.id}/contradictions`, { headers }),
     ]);
 
-    if (cRes.ok) setCaseData(await cRes.json());
+    let type = "guard";
+    if (cRes.ok) { const cd = await cRes.json(); setCaseData(cd); type = cd.case_type; }
     if (evRes.ok) setEvidence(await evRes.json());
     if (conRes.ok) setConversations(await conRes.json());
     if (grRes.ok) setGraph(await grRes.json());
     if (ldRes.ok) setLeads(await ldRes.json());
     if (imRes.ok) setImpact(await imRes.json());
+    if (ctRes.ok) setContradictions(await ctRes.json());
+
+    if (type === "fair") {
+      const dcRes = await fetch(`${API}/api/v1/cases/${params.id}/dispute-codes`, { headers });
+      if (dcRes.ok) setDisputeCodes(await dcRes.json());
+    }
   };
 
   useEffect(() => {
     fetchCaseData();
 
-    // WebSocket connection
     ws.current = new WebSocket(`${WS_API}/api/v1/cases/${params.id}/stream`);
-    
+
     ws.current.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      console.log("WS Event:", data.event);
-      switch (data.event) {
-        case "pipeline.started":
-          setPipelineRunning(true);
-          break;
-        case "pipeline.complete":
-          setPipelineRunning(false);
-          setImpact(data.payload);
-          fetchCaseData(); // Refresh all
-          break;
-        case "narrative.trajectory_computed":
-          // Refresh active convo if it's the one that was updated
-          if (activeConvo && activeConvo.conversation_id === data.payload.conversation_id) {
-            setActiveConvo(data.payload);
-          }
-          break;
-        case "lead.created":
-        case "lead.confirmed":
-        case "lead.rejected":
-        case "evidence.revealed":
-          fetchCaseData();
-          break;
-        default:
-          break;
+      try {
+        const data = JSON.parse(event.data);
+        switch (data.event) {
+          case "pipeline.started":
+            setPipelineRunning(true);
+            break;
+          case "pipeline.complete":
+            setPipelineRunning(false);
+            setImpact(data.payload);
+            fetchCaseData();
+            break;
+          case "narrative.trajectory_computed":
+            if (activeConvo && activeConvo.conversation_id === data.payload?.conversation_id) {
+              setActiveConvo(data.payload);
+            }
+            break;
+          case "lead.created":
+          case "lead.confirmed":
+          case "lead.rejected":
+          case "evidence.revealed":
+          case "contradiction.found":
+          case "contradiction.confirmed":
+          case "contradiction.dismissed":
+          case "dispute.submitted":
+          case "evidence.paired":
+            fetchCaseData();
+            break;
+          default:
+            break;
+        }
+      } catch (err) {
+        console.error("WebSocket message parse error:", err);
       }
     };
-    
-    const ping = setInterval(() => ws.current?.readyState === 1 && ws.current.send("ping"), 30000);
+
+    const ping = setInterval(() => ws.current?.readyState === 1 && ws.current.send("ping"), 25000);
 
     return () => {
       clearInterval(ping);
       if (ws.current) ws.current.close();
     };
-  }, [params.id, activeConvo]);
+  }, [params.id]);
 
   const fetchConvoTimeline = async (convoId: string) => {
     const token = localStorage.getItem("acpia_token");
     const res = await fetch(`${API}/api/v1/conversations/${convoId}/timeline`, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     });
     if (res.ok) {
       setActiveConvo(await res.json());
@@ -101,11 +121,16 @@ export default function CaseWorkspace({ params }: { params: { id: string } }) {
     const token = localStorage.getItem("acpia_token");
     const formData = new FormData();
     formData.append("file", file);
-    await fetch(`${API}/api/v1/cases/${params.id}/evidence`, {
+    if (uploadRole) formData.append("submitter_role", uploadRole);
+    const res = await fetch(`${API}/api/v1/cases/${params.id}/evidence`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
-      body: formData
+      body: formData,
     });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      alert(body.detail || "Evidence upload failed.");
+    }
     fetchCaseData();
   };
 
@@ -114,187 +139,450 @@ export default function CaseWorkspace({ params }: { params: { id: string } }) {
     const token = localStorage.getItem("acpia_token");
     await fetch(`${API}/api/v1/cases/${params.id}/analyze`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     });
   };
 
-  const judgeLead = async (leadId: string, action: 'confirm' | 'reject') => {
+  const judgeLead = async (leadId: string, action: "confirm" | "reject") => {
     const token = localStorage.getItem("acpia_token");
     await fetch(`${API}/api/v1/leads/${leadId}/${action}`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     });
     fetchCaseData();
   };
 
-  const downloadReport = (type: 'report' | 'certificate') => {
+  const downloadReport = (type: "report" | "certificate") => {
     const token = localStorage.getItem("acpia_token");
     window.open(`${API}/api/v1/cases/${params.id}/${type}?token=${token}`, "_blank");
   };
 
-  if (!caseData) return <Shell><div className="container">Loading...</div></Shell>;
+  if (!caseData) {
+    return (
+      <Shell title="Loading Case Workspace...">
+        <div className="page-body">
+          <p>Loading case ledger from forensic repository...</p>
+        </div>
+      </Shell>
+    );
+  }
+
+  const isFair = caseData.case_type === "fair";
+  const unanalyzedCount = evidence.filter((e) => !e.processed).length;
+  const pendingLeadsCount = leads.filter((l) => l.status === "proposed").length;
 
   return (
-    <Shell title={`CASE: ${caseData.reference}`}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+    <Shell title={`Case: ${caseData.reference}`}>
+      {/* Case Header */}
+      <div className="page-header">
         <div>
-          <h1 className="mono" style={{ fontSize: "1.75rem", marginBottom: "0.25rem" }}>{caseData.reference}</h1>
-          <p style={{ color: "var(--text)" }}>{caseData.title}</p>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+            <span className={`badge ${isFair ? "badge-fair" : "badge-guard"}`}>
+              {isFair ? "FAIR Dual-Blind Dispute" : "GUARD Single Investigation"}
+            </span>
+            <span className="mono" style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--primary)" }}>
+              {caseData.reference}
+            </span>
+            <span style={{ fontSize: "0.75rem", color: "var(--gray-500)" }}>
+              &bull; Secured {new Date(caseData.created_at).toLocaleDateString()}
+            </span>
+          </div>
+          <h1>{caseData.title}</h1>
         </div>
-        <div style={{ display: "flex", gap: "1rem" }}>
-          <button className="btn btn-ghost" onClick={() => downloadReport('report')}>Download Report PDF</button>
-          <button className="btn btn-ghost" onClick={() => downloadReport('certificate')}>BSA §63 Certificate</button>
+
+        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          {isFair && (
+            <button
+              className="btn btn-info btn-sm"
+              onClick={() => setActiveTab("compare")}
+              style={{ background: "var(--secondary)", color: "#fff", border: "none" }}
+            >
+              🔍 Compare Evidence
+            </button>
+          )}
+          <button className="btn btn-secondary btn-sm" onClick={() => downloadReport("report")}>
+            📄 Download Report PDF
+          </button>
+          <button className="btn btn-gold btn-sm" onClick={() => downloadReport("certificate")}>
+            📜 BSA §63 Certificate
+          </button>
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "1.5rem" }}>
-        {/* Main Column */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-          
-          {/* Analysis Actions */}
-          <div className="card-hi" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div>
-              <div style={{ fontWeight: 600, color: "var(--text)", marginBottom: "0.25rem" }}>Intelligence Pipeline</div>
-              <div style={{ fontSize: "0.875rem", color: "var(--text-dim)" }}>
-                {evidence.filter(e => !e.processed).length} artifacts awaiting processing
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: "1rem" }}>
-              <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={e => e.target.files && uploadFile(e.target.files[0])} />
-              <button className="btn btn-ghost" onClick={() => fileInputRef.current?.click()}>+ Add Evidence</button>
-              <button className="btn btn-primary" onClick={runPipeline} disabled={pipelineRunning || evidence.filter(e => !e.processed).length === 0}>
-                {pipelineRunning ? "Analyzing..." : "Run Analysis"}
-              </button>
-            </div>
-          </div>
+      {/* Tabs Bar */}
+      <div className="tabs-bar">
+        <button
+          className={`tab-btn ${activeTab === "evidence" ? "active" : ""}`}
+          onClick={() => setActiveTab("evidence")}
+        >
+          Secured Evidence ({evidence.length})
+        </button>
+        {isFair && (
+          <button
+            className={`tab-btn ${activeTab === "contradictions" ? "active" : ""}`}
+            onClick={() => setActiveTab("contradictions")}
+          >
+            Contradiction Board ({contradictions.length})
+          </button>
+        )}
+        <button
+          className={`tab-btn ${activeTab === "leads" ? "active" : ""}`}
+          onClick={() => setActiveTab("leads")}
+        >
+          Lead Decision Queue {pendingLeadsCount > 0 && `(${pendingLeadsCount})`}
+        </button>
+        <button
+          className={`tab-btn ${activeTab === "timeline" ? "active" : ""}`}
+          onClick={() => setActiveTab("timeline")}
+        >
+          Behavioral Trajectory
+        </button>
+        {isFair && (
+          <button
+            className={`tab-btn ${activeTab === "compare" ? "active" : ""}`}
+            onClick={() => setActiveTab("compare")}
+          >
+            🔍 Evidence Comparison
+          </button>
+        )}
+        <button
+          className={`tab-btn ${activeTab === "graph" ? "active" : ""}`}
+          onClick={() => setActiveTab("graph")}
+        >
+          Entity Graph
+        </button>
+      </div>
 
-          {/* Timeline */}
-          {conversations.length > 0 && (
-            <div className="card">
-              <div className="panel-header" style={{ marginBottom: "0" }}>
-                <h2>Escalation Timeline</h2>
-                <div style={{ display: "flex", gap: "0.5rem" }}>
-                  {conversations.map(c => (
-                    <button key={c.id} className={`btn ${activeConvo?.conversation_id === c.id ? 'btn-primary' : 'btn-ghost'}`} onClick={() => fetchConvoTimeline(c.id)}>
-                      {c.participants.join(" ⇄ ")}
-                    </button>
+      <div className="page-body">
+        {/* Main Split Grid */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: "24px" }}>
+          {/* Main Content Area */}
+          <div>
+            {/* Blind Dual Submission Status (if FAIR) */}
+            {isFair && disputeCodes.length > 0 && (
+              <div className="card card-gold-accent" style={{ marginBottom: "20px" }}>
+                <div style={{ fontWeight: 700, color: "var(--primary)", fontSize: "0.9375rem", marginBottom: "8px" }}>
+                  Blind Dual Submission Status
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "8px" }}>
+                  {disputeCodes.map((dc) => (
+                    <div key={dc.role} style={{ background: "var(--gray-50)", border: "var(--border)", borderRadius: "var(--radius-sm)", padding: "10px 14px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                        <span style={{ fontSize: "0.6875rem", fontWeight: 700, textTransform: "uppercase", color: "var(--gray-600)" }}>
+                          {dc.role}
+                        </span>
+                        <span className={`badge ${dc.submitted ? "badge-success" : "badge-warning"}`}>
+                          {dc.submitted ? "✓ SUBMITTED" : "AWAITING CODE SUBMISSION"}
+                        </span>
+                      </div>
+                      <div className="mono" style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--primary)" }}>
+                        {dc.code}
+                      </div>
+                    </div>
                   ))}
                 </div>
+                <div style={{ fontSize: "0.75rem", color: "var(--gray-600)" }}>
+                  Neither party can see the opposite party&apos;s submissions. Isolation is enforced at the database query layer.
+                </div>
               </div>
-              {activeConvo ? (
-                <div style={{ paddingTop: "1rem" }}>
-                  <EscalationTimeline conversation={activeConvo} />
-                </div>
-              ) : (
-                <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-faint)" }}>
-                  Select a conversation to view trajectory
-                </div>
-              )}
-            </div>
-          )}
+            )}
 
-          {/* Graph */}
-          {graph.nodes.length > 0 && <KnowledgeGraph graphData={graph} />}
+            {/* Intelligence Pipeline Action Bar */}
+            <div className="card" style={{ padding: "16px 20px", marginBottom: "20px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+              <div>
+                <div style={{ fontWeight: 700, color: "var(--primary)", fontSize: "0.9375rem" }}>
+                  AI Intelligence & Entity Extraction Pipeline
+                </div>
+                <div style={{ fontSize: "0.8125rem", color: "var(--gray-600)" }}>
+                  <strong>{unanalyzedCount}</strong> evidence artifact{unanalyzedCount !== 1 ? "s" : ""} awaiting forensic analysis
+                </div>
+              </div>
 
-          {/* Evidence Grid */}
-          <div className="card">
-            <div className="panel-header">
-              <h2>Evidence Artifacts ({evidence.length})</h2>
+              <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                {isFair && (
+                  <select
+                    className="input"
+                    value={uploadRole}
+                    onChange={(e) => setUploadRole(e.target.value)}
+                    style={{ width: "160px", fontSize: "0.75rem", padding: "6px 8px" }}
+                  >
+                    <option value="">Unassigned / Investigator</option>
+                    <option value="complainant">From Complainant</option>
+                    <option value="respondent">From Respondent</option>
+                  </select>
+                )}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  style={{ display: "none" }}
+                  onChange={(e) => e.target.files?.[0] && uploadFile(e.target.files[0])}
+                />
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  + Add File
+                </button>
+                <button
+                  className="btn btn-primary btn-sm"
+                  disabled={pipelineRunning || unanalyzedCount === 0}
+                  onClick={runPipeline}
+                >
+                  {pipelineRunning ? "Processing Pipeline..." : "Run Analysis Pipeline →"}
+                </button>
+              </div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "1rem" }}>
-              {evidence.map(e => (
-                <div key={e.id} className="sealed-tile">
-                  <div className="sealed-preview">
-                    {e.mime_type.startsWith('image') ? <span style={{fontSize: "2rem"}}>🖼️</span> : <span style={{fontSize: "2rem"}}>📄</span>}
-                    {e.revealed_count === 0 && (
-                      <div className="sealed-overlay">
-                        <span style={{ fontSize: "0.75rem", fontWeight: 600, letterSpacing: "0.1em" }}>SEALED</span>
-                        <button className="btn btn-primary" style={{ fontSize: "0.6875rem", padding: "0.25rem 0.5rem" }} onClick={async () => {
-                          await fetch(`${API}/api/v1/evidence/${e.id}/reveal`, { method: "POST", headers: { Authorization: `Bearer ${localStorage.getItem("acpia_token")}` }});
-                          fetchCaseData();
-                        }}>Reveal (logs access)</button>
+
+            {/* TAB: Evidence Grid */}
+            {activeTab === "evidence" && (
+              <div className="card">
+                <div className="card-header">
+                  <h2>Secured Evidence Artifacts ({evidence.length})</h2>
+                  <span className="badge badge-gold">Two-Score Verification</span>
+                </div>
+                {evidence.length === 0 ? (
+                  <p style={{ color: "var(--gray-500)", padding: "20px" }}>No evidence artifacts attached to this case.</p>
+                ) : (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "16px" }}>
+                    {evidence.map((e) => (
+                      <EvidenceTile key={e.id} e={e} onRevealed={fetchCaseData} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB: Contradiction Board */}
+            {activeTab === "contradictions" && isFair && (
+              <ContradictionBoard contradictions={contradictions} onJudged={fetchCaseData} />
+            )}
+
+            {/* TAB: Lead Decision Queue */}
+            {activeTab === "leads" && (
+              <div className="card">
+                <div className="card-header">
+                  <h2>Human Decision Gate — Lead Queue ({leads.length})</h2>
+                  <span className="badge badge-neutral">Required Human Oversight</span>
+                </div>
+
+                <div className="alert alert-info" style={{ fontSize: "0.75rem", padding: "8px 12px", marginBottom: "16px" }}>
+                  <strong>Statutory Constraint:</strong> No AI code path may confirm a lead. Confirmation requires explicit authenticated investigator action.
+                </div>
+
+                {leads.length === 0 ? (
+                  <p style={{ color: "var(--gray-500)", padding: "20px" }}>No leads generated. Run the intelligence pipeline on evidence files.</p>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                    {leads.map((lead) => (
+                      <div
+                        key={lead.id}
+                        style={{
+                          background: "var(--gray-50)",
+                          border: "var(--border)",
+                          borderRadius: "var(--radius-sm)",
+                          padding: "14px 16px",
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                          <span className="badge badge-neutral">{lead.kind?.replace(/_/g, " ")}</span>
+                          <span className="mono" style={{ fontSize: "0.75rem", color: "var(--gray-600)" }}>
+                            Confidence: {lead.confidence?.toFixed(2)} &plusmn; {lead.confidence_ci?.toFixed(2)}
+                          </span>
+                        </div>
+                        <div style={{ fontWeight: 700, color: "var(--gray-900)", marginBottom: "12px", fontSize: "0.875rem" }}>
+                          {lead.summary}
+                        </div>
+
+                        {lead.status === "proposed" ? (
+                          <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+                            <button className="btn btn-confirm btn-sm" onClick={() => judgeLead(lead.id, "confirm")}>
+                              ✓ Confirm Lead
+                            </button>
+                            <button className="btn btn-reject btn-sm" onClick={() => judgeLead(lead.id, "reject")}>
+                              ✕ Reject Lead
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{ textAlign: "right" }}>
+                            <span className={`badge ${lead.status === "confirmed" ? "badge-success" : "badge-danger"}`}>
+                              {lead.status?.toUpperCase()} BY INVESTIGATOR
+                            </span>
+                          </div>
+                        )}
                       </div>
-                    )}
+                    ))}
                   </div>
-                  <div style={{ padding: "0.75rem" }}>
-                    <div style={{ fontWeight: 600, fontSize: "0.875rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.filename}</div>
-                    <div className="hash" style={{ marginTop: "0.25rem" }}>{e.sha256.substring(0, 12)}…</div>
-                    <div style={{ marginTop: "0.5rem", display: "flex", justifyContent: "space-between" }}>
-                      <span className={`badge ${e.integrity_ok ? 'badge-verified' : 'badge-alarm'}`} style={{ fontSize: "10px" }}>
-                        {e.integrity_ok ? 'INTEGRITY OK' : 'FAILED'}
-                      </span>
-                      {e.revealed_count > 0 && <span className="label" style={{ color: "var(--text-dim)" }}>Views: {e.revealed_count}</span>}
+                )}
+              </div>
+            )}
+
+            {/* TAB: Behavioral Trajectory */}
+            {activeTab === "timeline" && (
+              <div>
+                {conversations.length > 0 && (
+                  <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+                    {conversations.map((c) => (
+                      <button
+                        key={c.id}
+                        className={`btn ${activeConvo?.conversation_id === c.id ? "btn-primary" : "btn-secondary"} btn-sm`}
+                        onClick={() => fetchConvoTimeline(c.id)}
+                      >
+                        {c.participants.join(" ⇄ ")}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {activeConvo ? (
+                  <EscalationTimeline conversation={activeConvo} />
+                ) : (
+                  <div className="card" style={{ textAlign: "center", padding: "40px 20px", color: "var(--gray-500)" }}>
+                    Select a conversation thread above or run analysis pipeline to chart escalation trajectory.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB: Entity Graph */}
+            {activeTab === "graph" && (
+              <KnowledgeGraph graphData={graph} />
+            )}
+
+            {/* TAB: Evidence Comparison (FAIR cases only) */}
+            {activeTab === "compare" && isFair && (() => {
+              const complainantEvidence = evidence.filter((e) => e.submitter_role === "complainant");
+              const respondentEvidence = evidence.filter((e) => e.submitter_role === "respondent");
+              const complainantHashes = new Set(complainantEvidence.map((e) => e.sha256));
+              const respondentHashes = new Set(respondentEvidence.map((e) => e.sha256));
+
+              return (
+                <div>
+                  <div className="card" style={{ marginBottom: "20px" }}>
+                    <div className="card-header">
+                      <h3>🔍 Evidence Comparison Report — Complainant vs Respondent</h3>
+                    </div>
+                    <div style={{ padding: "16px 20px" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
+                        {/* Complainant Column */}
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+                            <span className="badge badge-info">COMPLAINANT</span>
+                            <span style={{ fontSize: "0.75rem", color: "var(--gray-500)" }}>{complainantEvidence.length} file(s)</span>
+                          </div>
+                          {complainantEvidence.length === 0 ? (
+                            <div style={{ padding: "16px", background: "var(--gray-50)", borderRadius: "var(--radius-sm)", color: "var(--gray-500)", fontSize: "0.8125rem", textAlign: "center" }}>
+                              No complainant evidence submitted yet
+                            </div>
+                          ) : complainantEvidence.map((e) => {
+                            const matchedByRespondent = respondentHashes.has(e.sha256);
+                            return (
+                              <div key={e.id} style={{
+                                padding: "10px 14px", border: "1px solid",
+                                borderColor: matchedByRespondent ? "var(--success-border)" : "var(--gray-200)",
+                                background: matchedByRespondent ? "var(--success-bg)" : "var(--white)",
+                                borderRadius: "var(--radius-sm)", marginBottom: "8px"
+                              }}>
+                                <div style={{ fontWeight: 700, fontSize: "0.875rem", color: "var(--gray-900)", marginBottom: "2px" }}>{e.filename}</div>
+                                <div className="mono" style={{ fontSize: "0.6875rem", color: "var(--gray-600)" }}>{e.sha256?.slice(0, 32)}...</div>
+                                {matchedByRespondent && (
+                                  <div style={{ fontSize: "0.6875rem", color: "var(--success)", fontWeight: 700, marginTop: "4px" }}>
+                                    ⚠ Same hash as respondent file — possible shared origin
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Respondent Column */}
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+                            <span className="badge badge-gold">RESPONDENT</span>
+                            <span style={{ fontSize: "0.75rem", color: "var(--gray-500)" }}>{respondentEvidence.length} file(s)</span>
+                          </div>
+                          {respondentEvidence.length === 0 ? (
+                            <div style={{ padding: "16px", background: "var(--gray-50)", borderRadius: "var(--radius-sm)", color: "var(--gray-500)", fontSize: "0.8125rem", textAlign: "center" }}>
+                              No respondent evidence submitted yet
+                            </div>
+                          ) : respondentEvidence.map((e) => {
+                            const matchedByComplainant = complainantHashes.has(e.sha256);
+                            return (
+                              <div key={e.id} style={{
+                                padding: "10px 14px", border: "1px solid",
+                                borderColor: matchedByComplainant ? "var(--success-border)" : "var(--gray-200)",
+                                background: matchedByComplainant ? "var(--success-bg)" : "var(--white)",
+                                borderRadius: "var(--radius-sm)", marginBottom: "8px"
+                              }}>
+                                <div style={{ fontWeight: 700, fontSize: "0.875rem", color: "var(--gray-900)", marginBottom: "2px" }}>{e.filename}</div>
+                                <div className="mono" style={{ fontSize: "0.6875rem", color: "var(--gray-600)" }}>{e.sha256?.slice(0, 32)}...</div>
+                                {matchedByComplainant && (
+                                  <div style={{ fontSize: "0.6875rem", color: "var(--success)", fontWeight: 700, marginTop: "4px" }}>
+                                    ⚠ Same hash as complainant file — possible shared origin
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div style={{ background: "var(--info-bg)", border: "1px solid var(--info-border)", borderRadius: "var(--radius-sm)", padding: "12px 16px", fontSize: "0.8125rem" }}>
+                        <strong>Comparison Result:</strong>{" "}
+                        {complainantEvidence.length === 0 || respondentEvidence.length === 0
+                          ? "Waiting for both parties to submit evidence."
+                          : (() => {
+                              const matches = Array.from(complainantHashes).filter((h) => respondentHashes.has(h as string)).length;
+                              return matches > 0
+                                ? `${matches} file(s) share the same SHA-256 hash — these files are cryptographically identical and may represent shared evidence or tampered copies.`
+                                : "No matching hashes found — both sides submitted unique files. Download the Case Report PDF for the full forensic analysis.";
+                            })()}
+                      </div>
+
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        style={{ marginTop: "14px" }}
+                        onClick={() => downloadReport("report")}
+                      >
+                        📄 Download Full Case Report PDF
+                      </button>
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Sidebar Column */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-          
-          {/* Impact Ledger */}
-          <div className="card">
-            <h3 style={{ marginBottom: "1rem" }}>Impact Ledger</h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-              <div className="ledger-stat">
-                <span className="label">Artifacts Processed</span>
-                <span className="ledger-num">{impact?.artifacts_processed || 0}</span>
-              </div>
-              <div className="ledger-stat">
-                <span className="label">Human Exposure</span>
-                <span className="ledger-num" style={{ color: "var(--steel)" }}>{impact?.artifacts_viewed || 0} views</span>
-              </div>
-              <div className="ledger-stat" style={{ background: "rgba(62,140,126,0.1)", border: "1px solid rgba(62,140,126,0.2)" }}>
-                <span className="label" style={{ color: "var(--verified)" }}>Exposure Avoided</span>
-                <span className="ledger-num" style={{ color: "var(--verified)" }}>{impact?.exposure_avoided_pct || 0}%</span>
-              </div>
-            </div>
+              );
+            })()}
           </div>
 
-          {/* Leads Queue (Human Gate) */}
-          <div className="card">
-            <div className="panel-header">
-              <h3>Lead Queue</h3>
-              <span className="badge badge-pending">{leads.filter(l => l.status === 'proposed').length}</span>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-              {leads.map(lead => (
-                <div key={lead.id} className={`lead-item ${lead.status}`}>
-                  <div className="label" style={{ marginBottom: "0.25rem", color: lead.status === 'proposed' ? 'var(--pending)' : 'var(--text-faint)' }}>
-                    {lead.kind.replace('_', ' ')}
-                  </div>
-                  <div style={{ fontSize: "0.875rem", marginBottom: "0.5rem" }}>{lead.summary}</div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem" }}>
-                    <span className="label">Confidence:</span>
-                    <span className="mono" style={{ fontSize: "0.75rem" }}>{lead.confidence.toFixed(2)} ± {lead.confidence_ci.toFixed(2)}</span>
-                  </div>
-                  
-                  {lead.status === 'proposed' ? (
-                    <div style={{ display: "flex", gap: "0.5rem" }}>
-                      <button className="btn btn-confirm" style={{ flex: 1, justifyContent: "center" }} onClick={() => judgeLead(lead.id, 'confirm')}>
-                        ✓ Confirm
-                      </button>
-                      <button className="btn btn-reject" style={{ flex: 1, justifyContent: "center" }} onClick={() => judgeLead(lead.id, 'reject')}>
-                        ✕ Reject
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="label">
-                      {lead.status.toUpperCase()} BY HUMAN
-                    </div>
-                  )}
+          {/* Right Column: Pairing & Impact Ledger */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+            <PairPanel caseId={params.id} />
+
+            {/* Impact Ledger Panel */}
+            <div className="card">
+              <div className="card-header">
+                <h3>⚖️ Impact Ledger</h3>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px", fontSize: "0.8125rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "var(--border)", paddingBottom: "6px" }}>
+                  <span style={{ color: "var(--gray-600)" }}>Artifacts Processed:</span>
+                  <strong>{impact?.artifacts_processed || 0}</strong>
                 </div>
-              ))}
-              {leads.length === 0 && <div className="label" style={{ textAlign: "center" }}>No leads generated.</div>}
-            </div>
-            <div className="label" style={{ marginTop: "1rem", textAlign: "center" }}>
-              Structural guarantee: No code path may set CONFIRMED except authenticated human action.
+                <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "var(--border)", paddingBottom: "6px" }}>
+                  <span style={{ color: "var(--gray-600)" }}>Human Views:</span>
+                  <strong>{impact?.artifacts_viewed || 0} views</strong>
+                </div>
+                <div style={{ background: "var(--success-bg)", border: "1px solid var(--success-border)", padding: "10px 12px", borderRadius: "var(--radius-sm)" }}>
+                  <div style={{ color: "var(--success)", fontWeight: 700, fontSize: "0.75rem" }}>EXPOSURE AVOIDED:</div>
+                  <div style={{ fontSize: "1.25rem", fontWeight: 900, color: "var(--success)" }}>
+                    {impact?.exposure_avoided_pct || 0}%
+                  </div>
+                </div>
+                {impact?.note && (
+                  <div style={{ fontSize: "0.6875rem", color: "var(--gray-500)", fontStyle: "italic" }}>
+                    {impact.note}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-
         </div>
       </div>
     </Shell>

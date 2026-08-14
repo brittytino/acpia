@@ -14,6 +14,9 @@ class Case(Base):
     reference: Mapped[str] = mapped_column(String, unique=True, nullable=False)  # CASE-2026-0114
     title: Mapped[str] = mapped_column(String, nullable=False)
     status: Mapped[str] = mapped_column(String, nullable=False, default="open")
+    # open | awaiting_submissions | under_review | closed | archived
+    case_type: Mapped[str] = mapped_column(String, nullable=False, default="guard")
+    # guard (child protection) | fair (workplace/harassment dispute)
     created_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
@@ -26,3 +29,5 @@ class Case(Base):
     nodes = relationship("Node", back_populates="case", cascade="all, delete-orphan")
     edges = relationship("Edge", back_populates="case", cascade="all, delete-orphan")
     acquisitions = relationship("Acquisition", back_populates="case", cascade="all, delete-orphan")
+    dispute_codes = relationship("DisputeCode", back_populates="case", cascade="all, delete-orphan")
+    contradictions = relationship("Contradiction", back_populates="case", cascade="all, delete-orphan")

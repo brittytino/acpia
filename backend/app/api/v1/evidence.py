@@ -37,6 +37,8 @@ class EvidenceOut(BaseModel):
     processed: bool
     description: str | None
     exif: dict
+    submitter_role: str | None = None
+    authenticity_indicators: list = []
 
 
 @router.post("/cases/{case_id}/acquisitions")
@@ -66,10 +68,20 @@ async def upload_evidence(
     file: UploadFile = File(...),
     client_sha256: str = Form(""),
     acquisition_id: str = Form(""),
+    submitter_role: str = Form(""),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Upload evidence. Server recomputes SHA-256 and compares client hash."""
+    """Upload evidence. Server recomputes SHA-256 and compares client hash.
+
+    For a FAIR case, the blind dispute-submission channel only ever carries a
+    hash — the file body never leaves the party's device. When an
+    investigator formally acquires the full content afterward (device
+    acquisition, forensic import), `submitter_role` tags which party it
+    came from, so the Contradiction Agent can still tell the submissions
+    apart. Leave blank for GUARD evidence, which has no "side"."""
+    if submitter_role and submitter_role not in ("complainant", "respondent"):
+        raise HTTPException(422, "submitter_role must be 'complainant' or 'respondent'.")
     # Check case exists
     case_result = await db.execute(select(Case).where(Case.id == case_id))
     if not case_result.scalar_one_or_none():
@@ -81,6 +93,12 @@ async def upload_evidence(
 
     actual_sha256 = hashlib.sha256(content).hexdigest()
     integrity_ok = (not client_sha256) or (actual_sha256 == client_sha256)
+
+    existing = (await db.execute(
+        select(Evidence).where(Evidence.case_id == case_id, Evidence.sha256 == actual_sha256)
+    )).scalar_one_or_none()
+    if existing:
+        raise HTTPException(409, "This exact file (same SHA-256) is already in this case.")
 
     # Store file
     storage_dir = Path(settings.STORAGE_PATH) / "cases" / str(case_id)
@@ -99,6 +117,7 @@ async def upload_evidence(
         client_sha256=client_sha256 or None,
         integrity_ok=integrity_ok,
         storage_path=str(storage_path),
+        submitter_role=submitter_role or None,
     )
     db.add(ev)
     await db.flush()
@@ -223,6 +242,7 @@ async def list_evidence(
         integrity_ok=e.integrity_ok, relevance=e.relevance,
         revealed_count=e.revealed_count, processed=e.processed,
         description=e.description, exif=e.exif or {},
+        submitter_role=e.submitter_role, authenticity_indicators=e.authenticity_indicators or [],
     ) for e in evs]
 
 
