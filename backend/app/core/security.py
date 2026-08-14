@@ -1,60 +1,35 @@
-"""
-FastAPI JWT authentication — ~40 lines, replaces Keycloak.
-"""
 from datetime import datetime, timedelta, timezone
-from typing import Optional
-from jose import JWTError, jwt
+import jwt
+from fastapi import Depends, HTTPException
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from passlib.context import CryptContext
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.config import settings
-from app.database import get_db
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+def hash_password(p: str) -> str:
+    return pwd.hash(p)
 
-def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+def verify_password(p: str, h: str) -> bool:
+    return pwd.verify(p, h)
 
+def issue_token(user_id: str, role: str) -> str:
+    return jwt.encode(
+        {"sub": str(user_id), "role": role,
+         "exp": datetime.now(timezone.utc) + timedelta(hours=8)},
+        settings.jwt_secret, algorithm="HS256")
 
-def hash_password(plain: str) -> str:
-    return pwd_context.hash(plain)
+def decode_token(token: str) -> dict:
+    return jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
 
+security = HTTPBearer()
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + (
-        expires_delta or timedelta(minutes=settings.JWT_EXPIRE_MINUTES)
-    )
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
-
-
-async def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db),
-):
-    from app.models.user import User
-    from sqlalchemy import select
-
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-
-    result = await db.execute(select(User).where(User.username == username))
-    user = result.scalar_one_or_none()
-    if user is None:
-        raise credentials_exception
-    return user
+        payload = decode_token(credentials.credentials)
+        class MockUser:
+            id = payload.get("sub")
+            role = payload.get("role")
+        return MockUser()
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")

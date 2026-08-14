@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 from sqlalchemy import String, DateTime, ForeignKey, Integer, Numeric, Text, ARRAY
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
@@ -20,6 +21,10 @@ class Conversation(Base):
     message_count: Mapped[int] = mapped_column(Integer, default=0)
     trajectory: Mapped[Optional[float]] = mapped_column(Numeric(5, 3), nullable=True)  # stages/week
     drift_ratio: Mapped[Optional[float]] = mapped_column(Numeric(5, 3), nullable=True)
+    code_switch_slope: Mapped[Optional[float]] = mapped_column(Numeric(5, 3), nullable=True)
+    code_switch_delta: Mapped[Optional[float]] = mapped_column(Numeric(5, 3), nullable=True)
+    code_switch_direction: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    language_profile: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default='{}')
 
     case = relationship("Case", back_populates="conversations")
     messages = relationship("Message", back_populates="conversation", cascade="all, delete-orphan",
@@ -46,5 +51,7 @@ class Message(Base):
     stage: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     stage_conf: Mapped[Optional[float]] = mapped_column(Numeric(4, 3), nullable=True)
     evidence_span: Mapped[Optional[str]] = mapped_column(String, nullable=True)  # "L142-L147"
+    language: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    tamil_share: Mapped[Optional[float]] = mapped_column(Numeric(4, 3), nullable=True)
 
     conversation = relationship("Conversation", back_populates="messages")
