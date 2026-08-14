@@ -1,221 +1,234 @@
-"""
-PDF Report Generation Endpoint
-GET /api/v1/cases/{case_id}/report — generates a court-ready PDF report
-"""
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import StreamingResponse
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-import io
-import structlog
+"""Reports API — Case report PDF (confirmed only) + BSA §63 certificate."""
+from uuid import UUID
+import tempfile
 from datetime import datetime, timezone
 
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+
 from app.database import get_db
-from app.auth.keycloak import get_current_user, CurrentUser
-from app.models.models import Case, EvidenceItem, Lead, ChainOfCustodyLog
+from app.models.case import Case
+from app.models.lead import Lead
+from app.models.evidence import Evidence, CustodyLog
+from app.models.user import User
+from app.core.security import get_current_user
+from app.core.custody import write_custody
 
-logger = structlog.get_logger(__name__)
-router = APIRouter()
+router = APIRouter(tags=["Reports"])
 
 
-@router.get("/cases/{case_id}/report", tags=["Reports"])
+@router.get("/cases/{case_id}/report")
 async def generate_case_report(
-    case_id: str,
+    case_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    """
-    Generate a comprehensive PDF investigation report for a case.
-    Includes: case summary, all confirmed/pending leads, chain of custody, evidence index.
-    """
-    # Fetch case
-    result = await db.execute(select(Case).where(Case.case_id == case_id))
-    case = result.scalar_one_or_none()
+    """Case report PDF — confirmed findings ONLY."""
+    case_result = await db.execute(select(Case).where(Case.id == case_id))
+    case = case_result.scalar_one_or_none()
     if not case:
-        raise HTTPException(status_code=404, detail="Case not found")
+        raise HTTPException(404, "Case not found")
 
-    # Fetch evidence
-    ev_result = await db.execute(
-        select(EvidenceItem).where(EvidenceItem.case_id == case_id)
-        .order_by(EvidenceItem.ingested_at)
-    )
-    evidence_items = ev_result.scalars().all()
-
-    # Fetch leads (confirmed + pending)
     leads_result = await db.execute(
-        select(Lead)
-        .where(Lead.case_id == case_id)
-        .order_by(Lead.risk_score.desc())
+        select(Lead).where(Lead.case_id == case_id, Lead.status == "confirmed")
     )
-    leads = leads_result.scalars().all()
+    confirmed_leads = leads_result.scalars().all()
 
-    # Fetch custody log for first evidence item (for demo)
-    custody_logs = []
-    if evidence_items:
-        coc_result = await db.execute(
-            select(ChainOfCustodyLog)
-            .where(ChainOfCustodyLog.evidence_id == evidence_items[0].evidence_id)
-            .order_by(ChainOfCustodyLog.action_ts)
-            .limit(20)
-        )
-        custody_logs = coc_result.scalars().all()
-
-    # Generate PDF
-    pdf_bytes = _generate_pdf(case, evidence_items, leads, custody_logs, current_user)
-
-    filename = f"ACPIA_Report_{case.case_number}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-
-    return StreamingResponse(
-        io.BytesIO(pdf_bytes),
-        media_type="application/pdf",
-        headers={
-            "Content-Disposition": f'attachment; filename="{filename}"',
-            "X-Case-ID": case_id,
-            "X-Generated-By": current_user.username,
-        }
-    )
-
-
-def _generate_pdf(case, evidence_items, leads, custody_logs, current_user) -> bytes:
-    """Generate a styled PDF report using fpdf2."""
     from fpdf import FPDF
-    from fpdf.enums import XPos, YPos
-
     pdf = FPDF()
-    pdf.set_auto_page_break(auto=True, margin=20)
     pdf.add_page()
 
-    # ── Header ──────────────────────────────────────────────────────────────
-    pdf.set_fill_color(15, 23, 42)      # dark slate
-    pdf.rect(0, 0, 210, 30, "F")
-    pdf.set_text_color(255, 255, 255)
-    pdf.set_font("Helvetica", "B", 16)
-    pdf.set_y(8)
-    pdf.cell(0, 10, "ACPIA — INTELLIGENCE INVESTIGATION REPORT", align="C")
+    # Header
+    pdf.set_font("Helvetica", "B", 18)
+    pdf.set_text_color(14, 17, 22)
+    pdf.cell(0, 12, "ACPIA — Case Investigation Report", ln=True, align="C")
     pdf.set_font("Helvetica", "", 9)
-    pdf.set_y(20)
-    pdf.cell(0, 6, "CONFIDENTIAL — LAW ENFORCEMENT USE ONLY", align="C")
-
-    # ── Case Summary ─────────────────────────────────────────────────────────
-    pdf.set_y(38)
-    pdf.set_text_color(15, 23, 42)
-    _section_header(pdf, "1. CASE SUMMARY")
-
-    info_rows = [
-        ("Case Number:", case.case_number),
-        ("Title:", case.title),
-        ("Status:", case.status.upper()),
-        ("Priority:", case.priority.upper()),
-        ("Jurisdiction:", case.jurisdiction),
-        ("Opened:", str(case.opened_at)[:19] if case.opened_at else "—"),
-        ("Evidence Items:", str(len(evidence_items))),
-        ("Leads Generated:", str(len(leads))),
-        ("Report Generated:", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")),
-        ("Generated By:", current_user.full_name or current_user.username),
-    ]
-
-    pdf.set_font("Helvetica", "", 10)
-    for label, value in info_rows:
-        pdf.set_font("Helvetica", "B", 10)
-        pdf.cell(55, 7, label)
-        pdf.set_font("Helvetica", "", 10)
-        pdf.cell(0, 7, str(value)[:80], new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-
-    if case.description:
-        pdf.ln(3)
-        pdf.set_font("Helvetica", "I", 9)
-        pdf.multi_cell(0, 5, case.description[:500])
-
-    # ── Leads Summary ────────────────────────────────────────────────────────
-    pdf.ln(5)
-    _section_header(pdf, f"2. INVESTIGATIVE LEADS ({len(leads)} total)")
-
-    if not leads:
-        pdf.set_font("Helvetica", "I", 10)
-        pdf.cell(0, 7, "No leads generated yet. Run the analysis pipeline first.", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    else:
-        # Table header
-        pdf.set_fill_color(226, 232, 240)
-        pdf.set_font("Helvetica", "B", 9)
-        pdf.cell(10, 7, "#", fill=True)
-        pdf.cell(20, 7, "Risk", fill=True)
-        pdf.cell(30, 7, "Status", fill=True)
-        pdf.cell(40, 7, "Agent", fill=True)
-        pdf.cell(0, 7, "Summary", fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-
-        pdf.set_font("Helvetica", "", 8)
-        for i, lead in enumerate(leads[:30], 1):
-            risk = float(lead.risk_score)
-            if risk >= 70:
-                pdf.set_text_color(185, 28, 28)
-            elif risk >= 45:
-                pdf.set_text_color(146, 64, 14)
-            else:
-                pdf.set_text_color(21, 128, 61)
-
-            pdf.cell(10, 6, str(i))
-            pdf.cell(20, 6, f"{risk:.0f}/100")
-            pdf.set_text_color(15, 23, 42)
-            pdf.cell(30, 6, lead.status.upper())
-            pdf.cell(40, 6, (lead.generated_by_agent or "")[:20])
-            pdf.cell(0, 6, (lead.summary or "")[:60], new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-
-            if lead.detailed_analysis:
-                pdf.set_font("Helvetica", "I", 7)
-                pdf.set_x(20)
-                pdf.multi_cell(170, 4, lead.detailed_analysis[:200])
-                pdf.set_font("Helvetica", "", 8)
-
-    # ── Evidence Index ───────────────────────────────────────────────────────
-    pdf.ln(5)
-    _section_header(pdf, f"3. EVIDENCE INDEX ({len(evidence_items)} items)")
-
-    pdf.set_font("Helvetica", "B", 9)
-    pdf.set_fill_color(226, 232, 240)
-    pdf.cell(10, 7, "#", fill=True)
-    pdf.cell(80, 7, "Filename", fill=True)
-    pdf.cell(40, 7, "Type", fill=True)
-    pdf.cell(30, 7, "Status", fill=True)
-    pdf.cell(0, 7, "SHA-256 (first 16)", fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-
-    pdf.set_font("Helvetica", "", 8)
-    for i, ev in enumerate(evidence_items[:50], 1):
-        pdf.cell(10, 5, str(i))
-        pdf.cell(80, 5, (ev.original_filename or "")[:40])
-        pdf.cell(40, 5, (ev.mime_type or "")[:22])
-        pdf.cell(30, 5, ev.processing_status or "—")
-        pdf.cell(0, 5, (ev.sha256_hash or "")[:16] + "...", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-
-    # ── Chain of Custody ─────────────────────────────────────────────────────
-    if custody_logs:
-        pdf.ln(5)
-        _section_header(pdf, "4. CHAIN OF CUSTODY (Sample — First Evidence Item)")
-        pdf.set_font("Helvetica", "B", 9)
-        pdf.set_fill_color(226, 232, 240)
-        pdf.cell(50, 7, "Timestamp", fill=True)
-        pdf.cell(50, 7, "Action", fill=True)
-        pdf.cell(0, 7, "Hash", fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-
-        pdf.set_font("Helvetica", "", 8)
-        for log in custody_logs:
-            pdf.cell(50, 5, str(log.action_ts)[:19])
-            pdf.cell(50, 5, log.action or "")
-            pdf.cell(0, 5, (log.resulting_hash or "")[:32], new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-
-    # ── Footer ───────────────────────────────────────────────────────────────
+    pdf.set_text_color(125, 137, 152)
+    pdf.cell(0, 5, "POLICE INTELLIGENCE DOCUMENT — RESTRICTED", ln=True, align="C")
+    pdf.cell(0, 5, "Contains confirmed findings only. AI-proposed leads are excluded.", ln=True, align="C")
     pdf.ln(8)
+
+    # Case info
+    pdf.set_font("Courier", "B", 12)
+    pdf.set_text_color(214, 222, 232)
+    pdf.set_fill_color(22, 27, 34)
+    pdf.cell(0, 8, f"  {case.reference} — {case.title}", ln=True, fill=True)
+    pdf.set_font("Courier", "", 10)
+    pdf.set_text_color(125, 137, 152)
+    pdf.cell(0, 6, f"  Status: {case.status} | Generated: {datetime.now(timezone.utc).isoformat()}", ln=True)
+    pdf.cell(0, 6, f"  Generated by: {current_user.username} (role: {current_user.role})", ln=True)
+    pdf.ln(6)
+
+    # Confirmed findings
+    pdf.set_font("Helvetica", "B", 13)
+    pdf.set_text_color(74, 127, 165)
+    pdf.cell(0, 8, f"Confirmed Findings ({len(confirmed_leads)})", ln=True)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(4)
+
+    if not confirmed_leads:
+        pdf.set_font("Helvetica", "I", 11)
+        pdf.set_text_color(78, 88, 101)
+        pdf.cell(0, 8, "No confirmed findings in this case.", ln=True)
+    else:
+        for i, lead in enumerate(confirmed_leads, 1):
+            pdf.set_font("Helvetica", "B", 11)
+            pdf.set_text_color(214, 222, 232)
+            pdf.cell(0, 7, f"{i}. {lead.kind.replace('_', ' ').upper()}", ln=True)
+            pdf.set_font("Helvetica", "", 10)
+            pdf.set_text_color(214, 222, 232)
+            pdf.multi_cell(0, 6, lead.summary)
+            pdf.set_font("Courier", "", 9)
+            pdf.set_text_color(78, 88, 101)
+            pdf.cell(0, 5, f"Confidence: {float(lead.confidence):.2f} ± {float(lead.confidence_ci):.2f}", ln=True)
+            pdf.cell(0, 5, f"Confirmed: {lead.judged_at.isoformat() if lead.judged_at else 'N/A'}", ln=True)
+            pdf.cell(0, 5, f"Sources: {len(lead.source_ids)} evidence item(s) cited", ln=True)
+            pdf.ln(4)
+
+    # Footer
     pdf.set_font("Helvetica", "I", 8)
-    pdf.set_text_color(100, 116, 139)
-    pdf.cell(0, 5, f"Generated by ACPIA v1.0 | {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')} | SRCAS Hackathon 2024", align="C")
+    pdf.set_text_color(78, 88, 101)
+    pdf.multi_cell(0, 5,
+        "This report contains only findings confirmed by an authorised investigator. "
+        "AI-generated leads excluded by design. See BSA §63 certificate for full chain of custody."
+    )
 
-    return bytes(pdf.output())
+    await write_custody(
+        db, case_id, current_user.id,
+        action="REPORT_GENERATED",
+        target_type="case",
+        target_id=case_id,
+        detail={"confirmed_leads": len(confirmed_leads)},
+    )
+    await db.commit()
+
+    pdf_bytes = bytes(pdf.output())
+    tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
+    tmp.write(pdf_bytes)
+    tmp.close()
+    return FileResponse(tmp.name, media_type="application/pdf",
+                        filename=f"ACPIA-Report-{case.reference}.pdf")
 
 
-def _section_header(pdf, title: str):
-    """Draw a styled section header."""
-    pdf.set_fill_color(30, 41, 59)
-    pdf.set_text_color(255, 255, 255)
+@router.get("/cases/{case_id}/certificate")
+async def generate_bsa_certificate(
+    case_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """BSA §63 certificate — every hash, full custody log, dual signature blocks."""
+    case_result = await db.execute(select(Case).where(Case.id == case_id))
+    case = case_result.scalar_one_or_none()
+    if not case:
+        raise HTTPException(404, "Case not found")
+
+    evs_result = await db.execute(
+        select(Evidence).where(Evidence.case_id == case_id).order_by(Evidence.created_at)
+    )
+    evidence_list = evs_result.scalars().all()
+
+    custody_result = await db.execute(
+        select(CustodyLog).where(CustodyLog.case_id == case_id).order_by(CustodyLog.at)
+    )
+    custody_entries = custody_result.scalars().all()
+
+    from fpdf import FPDF
+    pdf = FPDF()
+    pdf.add_page()
+
+    # Certificate header
+    pdf.set_font("Helvetica", "B", 16)
+    pdf.set_text_color(26, 36, 48)
+    pdf.cell(0, 10, "CERTIFICATE OF ELECTRONIC EVIDENCE", ln=True, align="C")
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.cell(0, 7, "Bharatiya Sakshya Adhiniyam 2023 — Section 63", ln=True, align="C")
+    pdf.set_font("Helvetica", "", 9)
+    pdf.set_text_color(86, 100, 111)
+    pdf.cell(0, 5, "Produced by ACPIA — Agentic Child Protection Intelligence Architecture", ln=True, align="C")
+    pdf.ln(8)
+
+    # Case
+    pdf.set_font("Courier", "B", 11)
+    pdf.set_text_color(26, 36, 48)
+    pdf.cell(0, 6, f"Case Reference: {case.reference}", ln=True)
+    pdf.cell(0, 6, f"Case Title: {case.title}", ln=True)
+    pdf.cell(0, 6, f"Certificate Generated: {datetime.now(timezone.utc).isoformat()}", ln=True)
+    pdf.cell(0, 6, f"Issuing Officer: {current_user.username} ({current_user.role})", ln=True)
+    pdf.ln(6)
+
+    # Evidence hashes
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.set_text_color(26, 36, 48)
+    pdf.cell(0, 7, f"Evidence Artifacts ({len(evidence_list)})", ln=True)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(3)
+
+    for ev in evidence_list:
+        pdf.set_font("Helvetica", "B", 10)
+        pdf.cell(0, 5, ev.filename, ln=True)
+        pdf.set_font("Courier", "", 8)
+        pdf.set_text_color(86, 100, 111)
+        sha_groups = " ".join(ev.sha256[i:i+8] for i in range(0, 64, 8))
+        pdf.cell(0, 4, f"SHA-256: {sha_groups}", ln=True)
+        pdf.cell(0, 4, f"Size: {ev.size_bytes:,} bytes  |  Integrity: {'OK' if ev.integrity_ok else 'FAILED'}", ln=True)
+        pdf.set_text_color(26, 36, 48)
+        pdf.ln(2)
+
+    # Custody log
+    pdf.add_page()
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.cell(0, 7, f"Chain of Custody Log ({len(custody_entries)} entries)", ln=True)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(3)
+
+    for entry in custody_entries:
+        pdf.set_font("Courier", "", 8)
+        pdf.set_text_color(86, 100, 111)
+        pdf.cell(0, 4,
+            f"{entry.at.isoformat()} | {entry.action:25s} | {entry.target_type:10s}",
+            ln=True
+        )
+
+    # Signature blocks
+    pdf.ln(12)
     pdf.set_font("Helvetica", "B", 11)
-    pdf.cell(0, 8, f"  {title}", fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    pdf.set_text_color(15, 23, 42)
-    pdf.ln(2)
+    pdf.set_text_color(26, 36, 48)
+    pdf.cell(0, 7, "Certification", ln=True)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(6)
+    pdf.set_font("Helvetica", "", 10)
+    pdf.multi_cell(0, 6,
+        "I certify that the SHA-256 digest values listed above were computed by ACPIA software "
+        "from digital evidence stored on systems under my custody, and that the chain of custody "
+        "recorded above accurately reflects all access and actions taken in relation to this evidence."
+    )
+    pdf.ln(10)
+    pdf.cell(90, 6, "Signature of Investigating Officer", border="B")
+    pdf.cell(10)
+    pdf.cell(90, 6, "Signature of Supervising Officer", border="B")
+    pdf.ln(10)
+    pdf.cell(90, 6, "Name: " + current_user.username)
+    pdf.cell(10)
+    pdf.cell(90, 6, "Name: ___________________")
+    pdf.ln(8)
+    pdf.cell(90, 6, "Date: " + datetime.now(timezone.utc).strftime("%Y-%m-%d"))
+    pdf.cell(10)
+    pdf.cell(90, 6, "Date: ___________________")
+
+    await write_custody(
+        db, case_id, current_user.id,
+        action="CERTIFICATE_GENERATED",
+        target_type="case",
+        target_id=case_id,
+        detail={"evidence_count": len(evidence_list), "custody_entries": len(custody_entries)},
+    )
+    await db.commit()
+
+    pdf_bytes = bytes(pdf.output())
+    tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
+    tmp.write(pdf_bytes)
+    tmp.close()
+    return FileResponse(tmp.name, media_type="application/pdf",
+                        filename=f"ACPIA-BSA63-Certificate-{case.reference}.pdf")

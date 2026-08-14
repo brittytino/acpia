@@ -1,185 +1,34 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# ACPIA Docker Compose — Hackathon Production Config
-# Host: Tino (192.168.11.209) | All ports shifted to avoid WiFi conflicts
-# Barath & Chinnaya connect to: 192.168.11.209:<PORT>
-# ─────────────────────────────────────────────────────────────────────────────
+version: '3.8'
 
-x-logging: &default-logging
-  driver: "json-file"
-  options:
-    max-size: "5m"
-    max-file: "2"
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: acpia-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: acpia
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
-networks:
-  acpia-net:
-    driver: bridge
+  ollama:
+    image: ollama/ollama
+    container_name: acpia-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    # If you have an NVIDIA GPU, uncomment the following:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
 
 volumes:
   postgres_data:
-  neo4j_data:
-  neo4j_logs:
-  neo4j_plugins:
-  minio_data:
-  redis_data:
-  opensearch_data:
   ollama_data:
-  grafana_data:
-  prometheus_data:
-  keycloak_data:
-  loki_data:
-
-services:
-  # ──────────────────────────────────────────────
-  # DATABASES & STORAGE
-  # ──────────────────────────────────────────────
-
-  postgres:
-    image: postgres:16-alpine
-    container_name: acpia-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: acpia
-      POSTGRES_USER: acpia_user
-      POSTGRES_PASSWORD: "acpia$3cret2024!"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "54327:5432"        # External 54327 → Internal 5432
-    networks:
-      - acpia-net
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U acpia_user -d acpia"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    logging: *default-logging
-
-  neo4j:
-    image: neo4j:5.15-community
-    container_name: acpia-neo4j
-    restart: unless-stopped
-    environment:
-      NEO4J_AUTH: "neo4j/acpiaGraph!2024"
-      NEO4J_PLUGINS: '["apoc"]'
-      NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
-      NEO4J_dbms_memory_heap_initial__size: "512m"
-      NEO4J_dbms_memory_heap_max__size: "1g"
-      NEO4J_dbms_memory_pagecache_size: "512m"
-    volumes:
-      - neo4j_data:/data
-      - neo4j_logs:/logs
-      - neo4j_plugins:/plugins
-    ports:
-      - "7575:7474"         # Browser UI  (was 7474)
-      - "7688:7687"         # Bolt protocol (was 7687)
-    networks:
-      - acpia-net
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 || exit 1"]
-      interval: 20s
-      timeout: 10s
-      retries: 10
-    logging: *default-logging
-
-  redis:
-    image: redis:7.2-alpine
-    container_name: acpia-redis
-    restart: unless-stopped
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
-    volumes:
-      - redis_data:/data
-    ports:
-      - "63799:6379"        # Non-standard to avoid conflicts
-    networks:
-      - acpia-net
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-    logging: *default-logging
-
-  minio:
-    image: minio/minio:latest
-    container_name: acpia-minio
-    restart: unless-stopped
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: acpiaMinio
-      MINIO_ROOT_PASSWORD: "acpiaMinioSec2024!"
-    volumes:
-      - minio_data:/data
-    ports:
-      - "9200:9000"         # API port
-      - "9201:9001"         # Console UI
-    networks:
-      - acpia-net
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    logging: *default-logging
-
-  # ──────────────────────────────────────────────
-  # AUTH
-  # ──────────────────────────────────────────────
-
-  keycloak:
-    image: quay.io/keycloak/keycloak:23.0
-    container_name: acpia-keycloak
-    restart: unless-stopped
-    command: ["start-dev"]
-    environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: acpia_keycloak_admin
-      KC_DB: dev-mem       # In-memory for hackathon speed
-      KC_HOSTNAME_STRICT: "false"
-      KC_HTTP_ENABLED: "true"
-      KC_HTTP_PORT: "8080"
-    ports:
-      - "8180:8080"         # External 8180 → Internal 8080
-    networks:
-      - acpia-net
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
-      interval: 15s
-      timeout: 10s
-      retries: 20
-    logging: *default-logging
-
-  # ──────────────────────────────────────────────
-  # OBSERVABILITY (lightweight)
-  # ──────────────────────────────────────────────
-
-  prometheus:
-    image: prom/prometheus:v2.48.0
-    container_name: acpia-prometheus
-    restart: unless-stopped
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.retention.time=1d'
-    volumes:
-      - prometheus_data:/prometheus
-    ports:
-      - "9191:9090"
-    networks:
-      - acpia-net
-    logging: *default-logging
-
-  grafana:
-    image: grafana/grafana:10.2.2
-    container_name: acpia-grafana
-    restart: unless-stopped
-    environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: acpia_grafana
-    volumes:
-      - grafana_data:/var/lib/grafana
-    ports:
-      - "3838:3000"
-    depends_on:
-      - prometheus
-    networks:
-      - acpia-net
-    logging: *default-logging

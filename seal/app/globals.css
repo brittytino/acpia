@@ -1,0 +1,290 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+
+/* ── ACPIA Seal Design Tokens — §9.1 Light, calm, unhurried ── */
+:root {
+  --paper:      #F7F9FA;   /* cool soft paper */
+  --card:       #FFFFFF;
+  --ink:        #1A2430;
+  --ink-soft:   #56646F;
+  --ink-faint:  #93A0AA;
+  --rule:       #E2E8EC;
+  --calm:       #2E6E6B;   /* deep teal — primary action */
+  --calm-hi:    #3A8B87;
+  --seal:       #B4762A;   /* wax-seal amber — the seal action ONLY */
+  --seal-hi:    #C98A34;
+  --help:       #3D5A80;   /* helpline links */
+  --help-hi:    #4D6E99;
+  --success:    #2D7A4F;
+  --error:      #9B3B3B;
+  --shadow-sm:  0 1px 3px rgba(26,36,48,0.06), 0 1px 2px rgba(26,36,48,0.04);
+  --shadow-md:  0 4px 12px rgba(26,36,48,0.08), 0 2px 4px rgba(26,36,48,0.04);
+  --shadow-lg:  0 12px 32px rgba(26,36,48,0.12), 0 4px 8px rgba(26,36,48,0.06);
+  --radius-sm:  6px;
+  --radius-md:  12px;
+  --radius-lg:  20px;
+}
+
+/* ── Reset & Base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  font-size: 17px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  min-height: 100vh;
+}
+
+/* ── Typography ── */
+h1 { font-size: 2rem; font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; }
+h2 { font-size: 1.5rem; font-weight: 600; line-height: 1.3; }
+h3 { font-size: 1.125rem; font-weight: 600; line-height: 1.4; }
+p  { color: var(--ink-soft); }
+
+.mono {
+  font-family: 'IBM Plex Mono', 'Courier New', monospace;
+  font-size: 0.875rem;
+  color: var(--ink);
+  letter-spacing: 0.04em;
+}
+
+.hash-display {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+  word-break: break-all;
+  line-height: 1.6;
+}
+
+/* ── Cards ── */
+.card {
+  background: var(--card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--rule);
+  padding: 1.5rem;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.card:hover { box-shadow: var(--shadow-md); }
+
+.card-interactive {
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, transform 0.15s ease, border-color 0.2s ease;
+}
+
+.card-interactive:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+  border-color: var(--calm);
+}
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-sm);
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.btn:active { transform: scale(0.98); }
+.btn:focus-visible { outline: 2px solid var(--calm); outline-offset: 3px; }
+
+.btn-primary {
+  background: var(--calm);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(46,110,107,0.25);
+}
+.btn-primary:hover { background: var(--calm-hi); box-shadow: 0 4px 14px rgba(46,110,107,0.3); }
+
+.btn-seal {
+  background: var(--seal);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(180,118,42,0.3);
+  font-size: 1.1rem;
+  padding: 0.875rem 2rem;
+}
+.btn-seal:hover { background: var(--seal-hi); box-shadow: 0 4px 16px rgba(180,118,42,0.4); }
+
+.btn-help {
+  background: var(--help);
+  color: #fff;
+}
+.btn-help:hover { background: var(--help-hi); }
+
+.btn-outline {
+  background: transparent;
+  color: var(--calm);
+  border: 2px solid var(--calm);
+}
+.btn-outline:hover { background: rgba(46,110,107,0.05); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--ink-soft);
+}
+.btn-ghost:hover { background: var(--rule); }
+
+/* ── Helpline Banner (always visible) ── */
+.helpline-banner {
+  background: var(--card);
+  border-bottom: 1px solid var(--rule);
+  padding: 0.5rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.helpline-number {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--help);
+  text-decoration: none;
+}
+
+.helpline-number:hover { color: var(--help-hi); }
+
+/* ── Progress Steps ── */
+.progress-bar {
+  height: 4px;
+  background: var(--rule);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--calm);
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+/* ── Form Elements ── */
+.drop-zone {
+  border: 2px dashed var(--rule);
+  border-radius: var(--radius-md);
+  padding: 3rem 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.drop-zone:hover, .drop-zone.drag-over {
+  border-color: var(--calm);
+  background: rgba(46,110,107,0.03);
+}
+
+.input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1.5px solid var(--rule);
+  border-radius: var(--radius-sm);
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 1rem;
+  color: var(--ink);
+  background: var(--card);
+  transition: border-color 0.2s ease;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--calm);
+  box-shadow: 0 0 0 3px rgba(46,110,107,0.1);
+}
+
+textarea.input { resize: vertical; min-height: 100px; }
+
+/* ── Info Box ── */
+.info-box {
+  background: rgba(46,110,107,0.06);
+  border: 1px solid rgba(46,110,107,0.2);
+  border-radius: var(--radius-sm);
+  padding: 1rem 1.25rem;
+  color: var(--ink-soft);
+  font-size: 0.9375rem;
+}
+
+/* ── Reference Code ── */
+.reference-code {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  background: var(--paper);
+  border: 2px solid var(--rule);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 1.5rem;
+  display: inline-block;
+  user-select: all;
+}
+
+/* ── Layout ── */
+.container {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0 1.25rem;
+}
+
+.container-wide {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 1.25rem;
+}
+
+.page-content {
+  padding: 2rem 0;
+  min-height: calc(100vh - 60px);
+}
+
+.divider {
+  height: 1px;
+  background: var(--rule);
+  margin: 1.5rem 0;
+}
+
+/* ── Animations ── */
+@media (prefers-reduced-motion: no-preference) {
+  .fade-in { animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  
+  .slide-in { animation: slideIn 0.3s ease; }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
+}
+
+/* ── Hashing animation ── */
+@keyframes scanProgress {
+  0% { width: 0% }
+  100% { width: 100% }
+}
+
+.progress-hash { animation: scanProgress 1.5s ease-out forwards; }
+
+/* ── Responsive ── */
+@media (max-width: 480px) {
+  html { font-size: 16px; }
+  .btn { padding: 0.875rem 1.25rem; }
+  .btn-seal { padding: 1rem 1.5rem; }
+  h1 { font-size: 1.625rem; }
+  .reference-code { font-size: 1.375rem; }
+}
