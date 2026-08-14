@@ -22,6 +22,8 @@ export default function CasesList() {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) setCases(await res.json());
+    } catch (err) {
+      console.error("Failed to fetch cases:", err);
     } finally {
       setLoading(false);
     }

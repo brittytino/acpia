@@ -21,6 +21,8 @@ export default function InboundDetail({ params }: { params: { ref: string } }) {
         if (res.ok) {
           setReport(await res.json());
         }
+      } catch (err) {
+        console.error("Failed to fetch report detail:", err);
       } finally {
         setLoading(false);
       }
@@ -44,6 +46,8 @@ export default function InboundDetail({ params }: { params: { ref: string } }) {
         const data = await res.json();
         router.push(`/cases/${data.case_id}`);
       }
+    } catch (err) {
+      console.error("Failed to accept inbound report:", err);
     } finally {
       setAccepting(false);
     }

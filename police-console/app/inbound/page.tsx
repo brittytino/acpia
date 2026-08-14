@@ -19,6 +19,8 @@ export default function InboundList() {
         if (res.ok) {
           setInbound(await res.json());
         }
+      } catch (err) {
+        console.error("Failed to fetch inbound reports:", err);
       } finally {
         setLoading(false);
       }
