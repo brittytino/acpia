@@ -48,6 +48,9 @@ dependencies = [
     # Utilities
     "python-dotenv>=1.0.0",
     "python-dateutil>=2.8.2",
+
+    # Email (SMTP via Gmail App Password)
+    "aiosmtplib>=3.0.0",
 ]
 
 [project.optional-dependencies]

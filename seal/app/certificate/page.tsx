@@ -12,9 +12,12 @@ function CertificateContent() {
   const path = params.get("path") || "guardian";
   const [sealResult, setSealResult] = useState<any>(null);
   const [statement, setStatement] = useState("");
-  const [contact, setContact] = useState("");
+  const [complainantEmail, setComplainantEmail] = useState("");
+  const [accusedEmail, setAccusedEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [reference, setReference] = useState<string | null>(null);
+  const [fairCaseRef, setFairCaseRef] = useState<string | null>(null);
+  const [respondentCode, setRespondentCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -22,8 +25,22 @@ function CertificateContent() {
     if (stored) setSealResult(JSON.parse(stored));
   }, []);
 
+  const validateEmail = (email: string) => {
+    return !email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
   const submitAndGetCertificate = async () => {
     if (!sealResult) return;
+
+    if (!validateEmail(complainantEmail)) {
+      setError("Please enter a valid email address for your contact.");
+      return;
+    }
+    if (!validateEmail(accusedEmail)) {
+      setError("Please enter a valid email address for the accused person.");
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
 
@@ -34,7 +51,8 @@ function CertificateContent() {
         body: JSON.stringify({
           path_taken: path,
           statement: statement || null,
-          contact: contact || null,
+          complainant_email: complainantEmail || null,
+          accused_email: accusedEmail || null,
           sealed_at: sealResult.sealedAt,
           artifacts: [{
             filename: sealResult.filename,
@@ -45,19 +63,22 @@ function CertificateContent() {
         }),
       });
 
-      if (!reportRes.ok) throw new Error("Could not register sealed report on the server");
+      if (!reportRes.ok) {
+        const errData = await reportRes.json().catch(() => ({}));
+        throw new Error(errData?.detail || `Server error: ${reportRes.status}`);
+      }
+
       const data = await reportRes.json();
       const ref = data.reference;
       setReference(ref);
+      setFairCaseRef(data.fair_case_reference || null);
+      setRespondentCode(data.respondent_code || null);
       sessionStorage.setItem("seal_reference", ref);
 
-      // Trigger certificate PDF download in background window
+      // Download certificate PDF in background
       window.open(`${API_BASE}/api/v1/seal/reports/${ref}/certificate`, "_blank");
     } catch (e: any) {
-      console.warn("Backend unavailable, generating local reference for preservation:", e);
-      const local = `ACP-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-      setReference(local);
-      sessionStorage.setItem("seal_reference", local);
+      setError(e.message || "Failed to submit to server. Please check your connection and try again.");
     } finally {
       setSubmitting(false);
     }
@@ -101,7 +122,7 @@ function CertificateContent() {
             Finalize Your Evidence Certificate
           </h2>
           <p style={{ marginBottom: "24px" }}>
-            Add any optional statement or contact details before recording the cryptographic seal.
+            Provide your email and an optional statement. Your evidence will be cryptographically sealed and you'll receive a confirmation email.
           </p>
 
           {sealResult && (
@@ -136,24 +157,43 @@ function CertificateContent() {
 
               <div className="form-group">
                 <label className="form-label">
-                  Contact Information (Phone / Email)
+                  Your Email Address <span style={{ color: "var(--danger)", fontWeight: 700 }}>*</span>
+                </label>
+                <input
+                  type="email"
+                  id="complainant-email"
+                  className="input"
+                  placeholder="your.email@example.com"
+                  value={complainantEmail}
+                  onChange={(e) => setComplainantEmail(e.target.value)}
+                  autoComplete="email"
+                />
+                <div className="form-help">
+                  You will receive your official reference code and case summary at this address.
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  Accused Person's Email Address
                   <span className="optional">(Optional)</span>
                 </label>
                 <input
-                  type="text"
+                  type="email"
+                  id="accused-email"
                   className="input"
-                  placeholder="+91 98765 43210 or your.email@example.com"
-                  value={contact}
-                  onChange={(e) => setContact(e.target.value)}
+                  placeholder="accused.person@example.com"
+                  value={accusedEmail}
+                  onChange={(e) => setAccusedEmail(e.target.value)}
                 />
                 <div className="form-help">
-                  Law enforcement or counselors will use this only if follow-up is requested.
+                  If provided, the accused will be automatically notified with a secure link to submit their side of the evidence. A formal case will be opened.
                 </div>
               </div>
 
               {error && (
                 <div className="alert alert-danger" style={{ marginBottom: "20px" }}>
-                  {error}
+                  ⚠ {error}
                 </div>
               )}
 
@@ -172,6 +212,7 @@ function CertificateContent() {
                 <strong>Vault Certificate Created & Evidence Sealed Successfully.</strong>
                 <br />
                 Your submission is registered in the cryptographic chain of custody.
+                {complainantEmail && <><br />A confirmation email has been sent to <strong>{complainantEmail}</strong>.</>}
               </div>
 
               <div className="reference-banner">
@@ -184,9 +225,19 @@ function CertificateContent() {
                 </p>
               </div>
 
+              {fairCaseRef && respondentCode && (
+                <div className="alert alert-info" style={{ marginTop: "20px" }}>
+                  <strong>📋 Case Formally Opened: {fairCaseRef}</strong>
+                  <br />
+                  The accused has been notified via email with their dispute portal link.
+                  {accusedEmail && <> An email was sent to <strong>{accusedEmail}</strong>.</>}
+                </div>
+              )}
+
               <button
                 id="go-to-report-btn"
                 className="btn btn-gold btn-block btn-lg"
+                style={{ marginTop: "20px" }}
                 onClick={() => router.push(`/report?path=${path}`)}
               >
                 Proceed to Emergency & Police Reporting Channels →

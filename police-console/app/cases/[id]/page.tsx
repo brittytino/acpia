@@ -190,7 +190,16 @@ export default function CaseWorkspace({ params }: { params: { id: string } }) {
           <h1>{caseData.title}</h1>
         </div>
 
-        <div style={{ display: "flex", gap: "10px" }}>
+        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          {isFair && (
+            <button
+              className="btn btn-info btn-sm"
+              onClick={() => setActiveTab("compare")}
+              style={{ background: "var(--secondary)", color: "#fff", border: "none" }}
+            >
+              🔍 Compare Evidence
+            </button>
+          )}
           <button className="btn btn-secondary btn-sm" onClick={() => downloadReport("report")}>
             📄 Download Report PDF
           </button>
@@ -228,6 +237,14 @@ export default function CaseWorkspace({ params }: { params: { id: string } }) {
         >
           Behavioral Trajectory
         </button>
+        {isFair && (
+          <button
+            className={`tab-btn ${activeTab === "compare" ? "active" : ""}`}
+            onClick={() => setActiveTab("compare")}
+          >
+            🔍 Evidence Comparison
+          </button>
+        )}
         <button
           className={`tab-btn ${activeTab === "graph" ? "active" : ""}`}
           onClick={() => setActiveTab("graph")}
@@ -429,6 +446,109 @@ export default function CaseWorkspace({ params }: { params: { id: string } }) {
             {activeTab === "graph" && (
               <KnowledgeGraph graphData={graph} />
             )}
+
+            {/* TAB: Evidence Comparison (FAIR cases only) */}
+            {activeTab === "compare" && isFair && (() => {
+              const complainantEvidence = evidence.filter((e) => e.submitter_role === "complainant");
+              const respondentEvidence = evidence.filter((e) => e.submitter_role === "respondent");
+              const complainantHashes = new Set(complainantEvidence.map((e) => e.sha256));
+              const respondentHashes = new Set(respondentEvidence.map((e) => e.sha256));
+
+              return (
+                <div>
+                  <div className="card" style={{ marginBottom: "20px" }}>
+                    <div className="card-header">
+                      <h3>🔍 Evidence Comparison Report — Complainant vs Respondent</h3>
+                    </div>
+                    <div style={{ padding: "16px 20px" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
+                        {/* Complainant Column */}
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+                            <span className="badge badge-info">COMPLAINANT</span>
+                            <span style={{ fontSize: "0.75rem", color: "var(--gray-500)" }}>{complainantEvidence.length} file(s)</span>
+                          </div>
+                          {complainantEvidence.length === 0 ? (
+                            <div style={{ padding: "16px", background: "var(--gray-50)", borderRadius: "var(--radius-sm)", color: "var(--gray-500)", fontSize: "0.8125rem", textAlign: "center" }}>
+                              No complainant evidence submitted yet
+                            </div>
+                          ) : complainantEvidence.map((e) => {
+                            const matchedByRespondent = respondentHashes.has(e.sha256);
+                            return (
+                              <div key={e.id} style={{
+                                padding: "10px 14px", border: "1px solid",
+                                borderColor: matchedByRespondent ? "var(--success-border)" : "var(--gray-200)",
+                                background: matchedByRespondent ? "var(--success-bg)" : "var(--white)",
+                                borderRadius: "var(--radius-sm)", marginBottom: "8px"
+                              }}>
+                                <div style={{ fontWeight: 700, fontSize: "0.875rem", color: "var(--gray-900)", marginBottom: "2px" }}>{e.filename}</div>
+                                <div className="mono" style={{ fontSize: "0.6875rem", color: "var(--gray-600)" }}>{e.sha256?.slice(0, 32)}...</div>
+                                {matchedByRespondent && (
+                                  <div style={{ fontSize: "0.6875rem", color: "var(--success)", fontWeight: 700, marginTop: "4px" }}>
+                                    ⚠ Same hash as respondent file — possible shared origin
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Respondent Column */}
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+                            <span className="badge badge-gold">RESPONDENT</span>
+                            <span style={{ fontSize: "0.75rem", color: "var(--gray-500)" }}>{respondentEvidence.length} file(s)</span>
+                          </div>
+                          {respondentEvidence.length === 0 ? (
+                            <div style={{ padding: "16px", background: "var(--gray-50)", borderRadius: "var(--radius-sm)", color: "var(--gray-500)", fontSize: "0.8125rem", textAlign: "center" }}>
+                              No respondent evidence submitted yet
+                            </div>
+                          ) : respondentEvidence.map((e) => {
+                            const matchedByComplainant = complainantHashes.has(e.sha256);
+                            return (
+                              <div key={e.id} style={{
+                                padding: "10px 14px", border: "1px solid",
+                                borderColor: matchedByComplainant ? "var(--success-border)" : "var(--gray-200)",
+                                background: matchedByComplainant ? "var(--success-bg)" : "var(--white)",
+                                borderRadius: "var(--radius-sm)", marginBottom: "8px"
+                              }}>
+                                <div style={{ fontWeight: 700, fontSize: "0.875rem", color: "var(--gray-900)", marginBottom: "2px" }}>{e.filename}</div>
+                                <div className="mono" style={{ fontSize: "0.6875rem", color: "var(--gray-600)" }}>{e.sha256?.slice(0, 32)}...</div>
+                                {matchedByComplainant && (
+                                  <div style={{ fontSize: "0.6875rem", color: "var(--success)", fontWeight: 700, marginTop: "4px" }}>
+                                    ⚠ Same hash as complainant file — possible shared origin
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div style={{ background: "var(--info-bg)", border: "1px solid var(--info-border)", borderRadius: "var(--radius-sm)", padding: "12px 16px", fontSize: "0.8125rem" }}>
+                        <strong>Comparison Result:</strong>{" "}
+                        {complainantEvidence.length === 0 || respondentEvidence.length === 0
+                          ? "Waiting for both parties to submit evidence."
+                          : (() => {
+                              const matches = [...complainantHashes].filter((h) => respondentHashes.has(h)).length;
+                              return matches > 0
+                                ? `${matches} file(s) share the same SHA-256 hash — these files are cryptographically identical and may represent shared evidence or tampered copies.`
+                                : "No matching hashes found — both sides submitted unique files. Download the Case Report PDF for the full forensic analysis.";
+                            })()}
+                      </div>
+
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        style={{ marginTop: "14px" }}
+                        onClick={() => downloadReport("report")}
+                      >
+                        📄 Download Full Case Report PDF
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Right Column: Pairing & Impact Ledger */}

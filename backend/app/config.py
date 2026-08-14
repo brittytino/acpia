@@ -57,6 +57,14 @@ class Settings(BaseSettings):
     SEAL_URL: str = "http://localhost:47803"
     CONSOLE_URL: str = "http://localhost:47804"
 
+    # ── SMTP Email (Gmail App Password) ──────────────────
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""          # your-email@gmail.com
+    SMTP_PASSWORD: str = ""      # 16-char Google App Password
+    SMTP_FROM: str = "VERITAS ACPIA <noreply@acpia.gov.in>"
+    SMTP_ENABLED: bool = False   # set True in .env once credentials are added
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

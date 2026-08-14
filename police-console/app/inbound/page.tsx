@@ -4,29 +4,37 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:47802";
+const API = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? `http://${window.location.hostname}:47802` : "http://localhost:47802");
 
 export default function InboundList() {
   const router = useRouter();
   const [inbound, setInbound] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+
+  const fetchInbound = async () => {
+    try {
+      const token = localStorage.getItem("acpia_token");
+      const res = await fetch(`${API}/api/v1/inbound`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setInbound(await res.json());
+      }
+    } catch (err) {
+      console.warn("Inbound fetch failed:", err);
+    } finally {
+      setLoading(false);
+      setLastRefresh(new Date());
+    }
+  };
 
   useEffect(() => {
-    const fetchInbound = async () => {
-      try {
-        const token = localStorage.getItem("acpia_token");
-        const res = await fetch(`${API}/api/v1/inbound`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          setInbound(await res.json());
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchInbound();
+    // Auto-refresh every 30 seconds so new complaints appear automatically
+    const interval = setInterval(fetchInbound, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const filtered = inbound.filter((r) =>
@@ -41,8 +49,11 @@ export default function InboundList() {
           <h1>Inbound Citizen Evidence Submissions</h1>
           <p>Triage unattached sealed citizen reports and review cryptographic hashes before accepting into forensic cases.</p>
         </div>
-        <div>
-          <button className="btn btn-secondary btn-sm" onClick={() => window.location.reload()}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <span style={{ fontSize: "0.75rem", color: "var(--gray-500)" }}>
+            Last refreshed: {lastRefresh.toLocaleTimeString()} · auto every 30s
+          </span>
+          <button className="btn btn-secondary btn-sm" onClick={fetchInbound}>
             ↻ Refresh Queue
           </button>
         </div>

@@ -128,6 +128,8 @@ async def dismiss_contradiction(
 class DisputeCreate(BaseModel):
     title: str
     scope_summary: str  # e.g. "events between 1 July and 11 August 2026"
+    complainant_email: Optional[str] = None   # NEW: send complainant their code
+    respondent_email: Optional[str] = None    # NEW: send accused their code
 
 
 class SealedArtifactIn(BaseModel):
@@ -152,7 +154,8 @@ async def open_dispute(
     current_user: User = Depends(require_role("investigator", "supervisor", "admin")),
 ):
     """Opens a FAIR case and issues both codes at once. Neither party can
-    see the other's submission — there is no query path between them."""
+    see the other's submission — there is no query path between them.
+    Optionally emails each party their code."""
     import time
     case = Case(
         reference=f"CASE-{int(time.time())}",
@@ -176,6 +179,31 @@ async def open_dispute(
                         {"scope_summary": body.scope_summary})
     await db.commit()
 
+    # ── Fire email notifications in background ──────────────────────────────
+    import asyncio
+    from app.services import email as email_svc
+    from app.config import settings
+
+    email_tasks = []
+    if body.complainant_email:
+        email_tasks.append(email_svc.send_complainant_case_opened(
+            email=body.complainant_email,
+            complainant_code=complainant_code,
+            case_reference=case.reference,
+            scope_summary=body.scope_summary,
+            seal_url=settings.SEAL_URL,
+        ))
+    if body.respondent_email:
+        email_tasks.append(email_svc.send_respondent_invite(
+            email=body.respondent_email,
+            respondent_code=respondent_code,
+            case_reference=case.reference,
+            scope_summary=body.scope_summary,
+            seal_url=settings.SEAL_URL,
+        ))
+    if email_tasks:
+        asyncio.create_task(_fire_emails(email_tasks))
+
     return {
         "case_id": str(case.id),
         "case_reference": case.reference,
@@ -183,6 +211,17 @@ async def open_dispute(
         "respondent_code": respondent_code,
         "scope_summary": body.scope_summary,
     }
+
+
+async def _fire_emails(tasks):
+    """Run all email coroutines concurrently, silently catching errors."""
+    import logging
+    log = logging.getLogger("veritas.email")
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    for r in results:
+        if isinstance(r, Exception):
+            log.warning(f"Email task error: {r}")
+
 
 
 @router.get("/cases/{case_id}/dispute-codes")
