@@ -36,6 +36,7 @@ class EvidenceOut(BaseModel):
     revealed_count: int
     processed: bool
     description: str | None
+    ocr_text: str | None = None
     exif: dict
     submitter_role: str | None = None
     authenticity_indicators: list = []
@@ -241,7 +242,7 @@ async def list_evidence(
         size_bytes=e.size_bytes, sha256=e.sha256,
         integrity_ok=e.integrity_ok, relevance=e.relevance,
         revealed_count=e.revealed_count, processed=e.processed,
-        description=e.description, exif=e.exif or {},
+        description=e.description, ocr_text=e.ocr_text, exif=e.exif or {},
         submitter_role=e.submitter_role, authenticity_indicators=e.authenticity_indicators or [],
     ) for e in evs]
 

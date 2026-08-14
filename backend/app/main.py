@@ -5,6 +5,7 @@ Three services: Postgres, Ollama, this app.
 """
 import logging
 import sys
+import os
 from contextlib import asynccontextmanager
 import httpx
 from fastapi import FastAPI

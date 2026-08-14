@@ -246,6 +246,12 @@ export default function CaseWorkspace({ params }: { params: { id: string } }) {
           </button>
         )}
         <button
+          className={`tab-btn ${activeTab === "ai-analysis" ? "active" : ""}`}
+          onClick={() => setActiveTab("ai-analysis")}
+        >
+          🤖 AI Analysis ({evidence.filter((e: any) => e.processed).length})
+        </button>
+        <button
           className={`tab-btn ${activeTab === "graph" ? "active" : ""}`}
           onClick={() => setActiveTab("graph")}
         >
@@ -443,6 +449,117 @@ export default function CaseWorkspace({ params }: { params: { id: string } }) {
             )}
 
             {/* TAB: Entity Graph */}
+            {/* TAB: AI Analysis */}
+            {activeTab === "ai-analysis" && (
+              <div className="card">
+                <div className="card-header">
+                  <h2>🤖 AI Analysis Results</h2>
+                  <span className="badge badge-info">{evidence.filter((e: any) => e.processed).length} Analyzed</span>
+                </div>
+
+                {evidence.filter((e: any) => e.processed).length === 0 ? (
+                  <div style={{ padding: "32px 20px", textAlign: "center", color: "var(--gray-500)" }}>
+                    <div style={{ fontSize: "2rem", marginBottom: "8px" }}>⏳</div>
+                    No evidence has been processed by the AI pipeline yet.<br />
+                    Upload evidence and click <strong>"Run Analysis Pipeline"</strong> above.
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                    {evidence.filter((e: any) => e.processed).map((e: any) => (
+                      <div key={e.id} style={{
+                        background: "var(--gray-50)", border: "var(--border)",
+                        borderRadius: "var(--radius-sm)", padding: "16px 20px"
+                      }}>
+                        {/* File Header */}
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <span style={{ fontSize: "1.25rem" }}>
+                              {e.mime_type?.startsWith("image") ? "🖼️" : e.mime_type?.startsWith("video") ? "🎬" : e.mime_type?.startsWith("text") ? "💬" : "📄"}
+                            </span>
+                            <div>
+                              <div style={{ fontWeight: 700, fontSize: "0.9375rem", color: "var(--gray-900)" }}>{e.filename}</div>
+                              <div className="mono" style={{ fontSize: "0.6875rem", color: "var(--gray-500)" }}>SHA-256: {e.sha256?.slice(0, 24)}...</div>
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                            {e.submitter_role && (
+                              <span className={`badge ${e.submitter_role === "complainant" ? "badge-info" : "badge-gold"}`}>
+                                {e.submitter_role.toUpperCase()}
+                              </span>
+                            )}
+                            {e.relevance != null && (
+                              <span style={{
+                                fontSize: "0.6875rem", fontWeight: 900,
+                                background: e.relevance >= 0.7 ? "var(--success)" : e.relevance >= 0.4 ? "var(--warning)" : "var(--gray-400)",
+                                color: "#fff", padding: "3px 8px", borderRadius: "4px"
+                              }}>
+                                Relevance: {(e.relevance * 100).toFixed(0)}%
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* AI Description */}
+                        {e.description && (
+                          <div style={{ marginBottom: "10px", background: "var(--info-bg)", border: "1px solid var(--info-border)", borderRadius: "var(--radius-sm)", padding: "10px 14px" }}>
+                            <div style={{ fontSize: "0.6875rem", fontWeight: 700, textTransform: "uppercase", color: "var(--info)", marginBottom: "4px" }}>AI Description</div>
+                            <div style={{ fontSize: "0.8125rem", color: "var(--gray-900)", lineHeight: 1.5 }}>{e.description}</div>
+                          </div>
+                        )}
+
+                        {/* OCR Text */}
+                        {e.ocr_text && (
+                          <div style={{ marginBottom: "10px", background: "var(--white)", border: "var(--border)", borderRadius: "var(--radius-sm)", padding: "10px 14px" }}>
+                            <div style={{ fontSize: "0.6875rem", fontWeight: 700, textTransform: "uppercase", color: "var(--gray-600)", marginBottom: "4px" }}>OCR Extracted Text</div>
+                            <div className="mono" style={{ fontSize: "0.75rem", color: "var(--gray-800)", whiteSpace: "pre-wrap", maxHeight: "120px", overflow: "auto" }}>
+                              {e.ocr_text}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* EXIF Metadata */}
+                        {e.exif && Object.keys(e.exif).length > 0 && (
+                          <div style={{ marginBottom: "10px", background: "var(--white)", border: "var(--border)", borderRadius: "var(--radius-sm)", padding: "10px 14px" }}>
+                            <div style={{ fontSize: "0.6875rem", fontWeight: 700, textTransform: "uppercase", color: "var(--gray-600)", marginBottom: "6px" }}>Embedded Metadata (EXIF)</div>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 16px" }}>
+                              {Object.entries(e.exif).slice(0, 10).map(([key, val]: [string, any]) => (
+                                <div key={key} style={{ fontSize: "0.6875rem" }}>
+                                  <span style={{ color: "var(--gray-500)" }}>{key}:</span>{" "}
+                                  <span style={{ color: "var(--gray-900)", fontWeight: 600 }}>{String(val).slice(0, 40)}</span>
+                                </div>
+                              ))}
+                            </div>
+                            {Object.keys(e.exif).length > 10 && (
+                              <div style={{ fontSize: "0.625rem", color: "var(--gray-500)", marginTop: "4px" }}>
+                                +{Object.keys(e.exif).length - 10} more metadata fields
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Authenticity Indicators */}
+                        {(e.authenticity_indicators || []).length > 0 && (
+                          <div style={{ background: "var(--warning-bg)", border: "1px solid var(--warning-border)", borderRadius: "var(--radius-sm)", padding: "10px 14px" }}>
+                            <div style={{ fontSize: "0.6875rem", fontWeight: 700, textTransform: "uppercase", color: "var(--warning)", marginBottom: "6px" }}>
+                              ⚠ Authenticity Indicators ({e.authenticity_indicators.length})
+                            </div>
+                            {e.authenticity_indicators.map((ind: any, idx: number) => (
+                              <div key={idx} style={{ fontSize: "0.75rem", marginBottom: "4px" }}>
+                                <strong style={{ color: "var(--gray-900)" }}>• {ind.detail}</strong>
+                                <div style={{ fontStyle: "italic", color: "var(--gray-500)", fontSize: "0.6875rem" }}>
+                                  Caveat: {ind.caveat}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {activeTab === "graph" && (
               <KnowledgeGraph graphData={graph} />
             )}

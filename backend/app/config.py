@@ -62,7 +62,7 @@ class Settings(BaseSettings):
     SMTP_PORT: int = 587
     SMTP_USER: str = "barathvikraman.clovertech@gmail.com"
     SMTP_PASSWORD: str = "ldqjpvtigidttnqz"
-    SMTP_FROM: str = "VERITAS ACPIA <noreply@acpia.gov.in>"
+    SMTP_FROM: str = "VERITAS ACPIA <barathvikraman.clovertech@gmail.com>"
     SMTP_ENABLED: bool = True
 
     class Config:
