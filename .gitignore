@@ -1,0 +1,55 @@
+# Python cache and venv
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+.venv/
+venv/
+env/
+dist/
+build/
+*.egg-info/
+
+# Environment secrets — NEVER commit
+.env
+.env.local
+.env.production
+*.env
+
+# Node
+node_modules/
+.next/
+.turbo/
+out/
+npm-debug.log*
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Docker volumes & data
+postgres_data/
+neo4j_data/
+minio_data/
+redis_data/
+ollama_data/
+
+# Logs
+*.log
+logs/
+
+# Alembic auto-generated (keep versions/)
+# alembic/versions/ -> DO commit these
+
+# Test artifacts
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Build artifacts
+*.tar.gz
+*.tar.zst
+*.zip

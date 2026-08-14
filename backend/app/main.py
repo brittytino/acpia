@@ -1,198 +1,106 @@
 """
-ACPIA FastAPI Main Application
-Registers all routers, middleware, observability, and lifecycle events.
+ACPIA v3 — Main FastAPI application.
+Three services: Postgres, Ollama, this app.
+Full cold boot in under a minute.
 """
-import structlog
+import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request, status
+import httpx
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from prometheus_fastapi_instrumentator import Instrumentator
-from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from datetime import datetime, timezone
 
 from app.config import settings
-from app.database import init_databases, close_databases, get_redis
-from app.api.v1 import cases, evidence, leads, graph, stream
-from app.services.ingest import ingest_service
+from app.database import create_tables
 
-logger = structlog.get_logger(__name__)
+log = logging.getLogger("acpia")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+
+
+async def _warm_models():
+    """
+    Pin all three models resident in Ollama memory (keep_alive: -1).
+    ~4 GB total — fits 6 GB VRAM with headroom. No eviction, ever.
+    """
+    models = (settings.VISION_MODEL, settings.LLM_MODEL, settings.EMBED_MODEL)
+    async with httpx.AsyncClient(base_url=settings.OLLAMA_BASE_URL, timeout=300) as c:
+        for model in models:
+            try:
+                await c.post("/api/generate", json={
+                    "model": model,
+                    "prompt": "ready",
+                    "stream": False,
+                    "keep_alive": -1,
+                })
+                log.info(f"✅ Model warm: {model}")
+            except Exception as e:
+                log.warning(f"⚠ Model warm failed ({model}): {e}")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup and shutdown lifecycle."""
-    logger.info("ACPIA Backend starting up", version=settings.APP_VERSION)
+    log.info("ACPIA v3 starting — Postgres + Ollama + this app")
 
-    # Initialize all database connections
+    # Create DB tables
     try:
-        await init_databases()
+        await create_tables()
+        log.info("✅ Database ready")
     except Exception as e:
-        logger.error("Database initialization failed", error=str(e))
+        log.error(f"❌ Database init failed: {e}")
 
-    # Load known hash list
-    ingest_service.load_known_hash_list()
+    # Create storage directory
+    import os
+    os.makedirs(settings.STORAGE_PATH, exist_ok=True)
 
-    # Initialize Neo4j schema (idempotent)
-    await _init_neo4j_schema()
+    # Warm models
+    await _warm_models()
 
-    # Initialize MinIO buckets
-    await _init_minio()
-
-    # Initialize OpenSearch indices
-    await _init_opensearch_indices()
-
-    logger.info("ACPIA Backend ready")
+    log.info(f"✅ ACPIA ready on port {settings.BACKEND_PORT}")
     yield
-
-    # Shutdown
-    await close_databases()
-    logger.info("ACPIA Backend shut down cleanly")
+    log.info("ACPIA shutting down")
 
 
-def create_app() -> FastAPI:
-    app = FastAPI(
-        title="ACPIA — Agentic Child Protection Investigation Assistant",
-        description=(
-            "AI-assisted digital evidence intelligence system for authorized law enforcement. "
-            "All AI-generated leads require mandatory human review before entering the case record."
-        ),
-        version=settings.APP_VERSION,
-        docs_url="/docs" if settings.DEBUG else None,
-        redoc_url="/redoc" if settings.DEBUG else None,
-        openapi_url="/openapi.json",
-        lifespan=lifespan,
-    )
+app = FastAPI(
+    title="ACPIA — Agentic Child Protection Intelligence Architecture",
+    description="v3 — From the first screenshot to the courtroom: one unbroken chain.",
+    version="3.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    lifespan=lifespan,
+)
 
-    # ─── CORS ───────────────────────────────────
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.CORS_ORIGINS_LIST,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
-    # ─── Prometheus metrics ──────────────────────
-    Instrumentator(
-        should_group_status_codes=False,
-        excluded_handlers=["/health", "/metrics"],
-    ).instrument(app).expose(app, endpoint="/metrics")
-
-    # ─── OpenTelemetry tracing ───────────────────
-    if not settings.DEBUG:
-        provider = TracerProvider()
-        otlp_exporter = OTLPSpanExporter(
-            endpoint=f"http://{settings.JAEGER_HOST}:{settings.JAEGER_PORT}",
-            insecure=True,
-        )
-        provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
-        trace.set_tracer_provider(provider)
-        FastAPIInstrumentor.instrument_app(app)
-
-    # ─── Routes ─────────────────────────────────
-    prefix = settings.API_PREFIX
-    app.include_router(cases.router, prefix=prefix)
-    app.include_router(evidence.router, prefix=prefix)
-    app.include_router(leads.router, prefix=prefix)
-    app.include_router(graph.router, prefix=prefix)
-    app.include_router(stream.router, prefix=prefix)
-
-    # ─── Health endpoint ─────────────────────────
-    @app.get("/health", tags=["Health"])
-    async def health_check():
-        services = {}
-        try:
-            redis = await get_redis()
-            await redis.ping()
-            services["redis"] = True
-        except Exception:
-            services["redis"] = False
-
-        # Add more service health checks
-        all_healthy = all(services.values())
-        return JSONResponse(
-            status_code=200 if all_healthy else 503,
-            content={
-                "status": "healthy" if all_healthy else "degraded",
-                "version": settings.APP_VERSION,
-                "environment": settings.ENVIRONMENT,
-                "services": services,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            },
-        )
-
-    # ─── Global exception handler ────────────────
-    @app.exception_handler(Exception)
-    async def global_exception_handler(request: Request, exc: Exception):
-        logger.error("Unhandled exception", path=request.url.path, error=str(exc))
-        return JSONResponse(
-            status_code=500,
-            content={"detail": "Internal server error"},
-        )
-
-    return app
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS + ["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
-async def _init_neo4j_schema():
-    """Create Neo4j constraints and indexes (idempotent)."""
-    from app.database import neo4j_session
-    try:
-        async with neo4j_session() as session:
-            constraints = [
-                "CREATE CONSTRAINT IF NOT EXISTS FOR (p:Person) REQUIRE p.person_id IS UNIQUE",
-                "CREATE CONSTRAINT IF NOT EXISTS FOR (d:Device) REQUIRE d.device_id IS UNIQUE",
-                "CREATE CONSTRAINT IF NOT EXISTS FOR (pl:Platform) REQUIRE pl.platform_id IS UNIQUE",
-                "CREATE CONSTRAINT IF NOT EXISTS FOR (c:Case) REQUIRE c.case_id IS UNIQUE",
-                "CREATE CONSTRAINT IF NOT EXISTS FOR (f:FileEvidence) REQUIRE f.evidence_id IS UNIQUE",
-                "CREATE INDEX IF NOT EXISTS FOR (p:Person) ON (p.display_alias)",
-                "CREATE INDEX IF NOT EXISTS FOR (d:Device) ON (d.device_fingerprint)",
-            ]
-            for constraint in constraints:
-                await session.run(constraint)
-        logger.info("Neo4j schema initialized")
-    except Exception as e:
-        logger.warning("Neo4j schema init failed (may not be available yet)", error=str(e))
+@app.get("/health", tags=["System"])
+async def health():
+    return {"status": "ok", "version": "3.0.0", "service": "acpia-backend"}
 
 
-async def _init_minio():
-    """Ensure required MinIO buckets exist."""
-    try:
-        from app.database import get_minio_client
-        minio = get_minio_client()
-        for bucket in [settings.MINIO_BUCKET, f"{settings.MINIO_BUCKET}-reports"]:
-            if not minio.bucket_exists(bucket):
-                minio.make_bucket(bucket)
-                logger.info("Created MinIO bucket", bucket=bucket)
-    except Exception as e:
-        logger.warning("MinIO init failed", error=str(e))
+@app.get("/", tags=["System"])
+async def root():
+    return {
+        "service": "ACPIA v3",
+        "tagline": "From the first screenshot to the courtroom: one unbroken chain.",
+        "docs": "/docs",
+    }
 
 
-async def _init_opensearch_indices():
-    """Create OpenSearch index templates."""
-    try:
-        from app.database import get_opensearch_client
-        client = get_opensearch_client()
-        index_body = {
-            "mappings": {
-                "properties": {
-                    "evidence_id": {"type": "keyword"},
-                    "case_id": {"type": "keyword"},
-                    "content": {"type": "text", "analyzer": "english"},
-                    "mime_type": {"type": "keyword"},
-                    "ingested_at": {"type": "date"},
-                }
-            }
-        }
-        if not await client.indices.exists(index="acpia-evidence"):
-            await client.indices.create(index="acpia-evidence", body=index_body)
-            logger.info("Created OpenSearch index: acpia-evidence")
-    except Exception as e:
-        logger.warning("OpenSearch init failed", error=str(e))
+# ── Register all routers ──────────────────────────────────────────────────────
+from app.api.v1 import auth, seal, inbound, cases, evidence, leads, stream, reports
 
+app.include_router(auth.router, prefix="/api/v1")
+app.include_router(seal.router, prefix="/api/v1")
+app.include_router(inbound.router, prefix="/api/v1")
+app.include_router(cases.router, prefix="/api/v1")
+app.include_router(evidence.router, prefix="/api/v1")
+app.include_router(leads.router, prefix="/api/v1")
+app.include_router(stream.router, prefix="/api/v1")
+app.include_router(reports.router, prefix="/api/v1")
 
-app = create_app()
+log.info("✅ All v3 routers registered")
