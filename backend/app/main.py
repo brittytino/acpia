@@ -80,12 +80,14 @@ async def root():
 
 # ── Register API routers ──────────────────────────────────────────────────────
 try:
-    from app.api.v1 import cases, evidence, leads, graph, streaming
+    from app.api.v1 import cases, evidence, leads, graph, streaming, reports
     app.include_router(cases.router, prefix="/api/v1", tags=["Cases"])
     app.include_router(evidence.router, prefix="/api/v1", tags=["Evidence"])
     app.include_router(leads.router, prefix="/api/v1", tags=["Leads"])
     app.include_router(graph.router, prefix="/api/v1", tags=["Knowledge Graph"])
     app.include_router(streaming.router, prefix="/api/v1", tags=["Streaming"])
+    app.include_router(reports.router, prefix="/api/v1", tags=["Reports"])
     logger.info("✅ All API routers registered")
 except ImportError as e:
     logger.warning(f"Some routers not loaded yet: {e}")
+

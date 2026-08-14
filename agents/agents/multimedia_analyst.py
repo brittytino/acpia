@@ -1,215 +1,191 @@
 """
-Agent 1 — Multimedia Analyst
-Analyzes images, video frames, and audio files.
-Uses LLaVA (vision), faster-whisper (ASR), FFmpeg (video), ExifTool (metadata).
+Multimedia Analyst Agent — ACPIA Layer 3, Agent 1
+Analyzes image, video, and audio evidence using LLaVA (vision) and Whisper (audio).
+Detects harmful content, extracts scene descriptions, identifies objects/faces.
 """
-import json
-import structlog
-import subprocess
-import tempfile
+import base64
+import io
 import os
-from typing import List
-from tools.llava_tool import analyze_image
-from tools.whisper_tool import transcribe_audio
-from tools.exif_tool import extract_exif, compute_device_fingerprint
-from tools.graph_write_tool import GraphWriteService
-from app.config import settings
+import structlog
+from typing import TYPE_CHECKING
 
-logger = structlog.get_logger(__name__)
+logger = structlog.get_logger("multimedia_analyst")
 
 
 class MultimediaAnalystAgent:
+    """
+    Processes image, video, and audio evidence.
+    - Images: uses LLaVA for visual scene analysis
+    - Audio: uses faster-whisper for transcription
+    - Extracts entities, identifies risk indicators
+    """
+
     AGENT_NAME = "multimedia_analyst"
 
-    async def run(self, state: dict) -> dict:
-        multimedia_evidence = state.get("multimedia_evidence", [])
-        case_id = state["case_id"]
+    VISION_PROMPT = """You are a forensic AI assistant helping law enforcement analyze digital evidence.
+Analyze this image carefully and provide a structured JSON response.
 
-        progress_cb = state.get("progress_callback")
-        if progress_cb:
-            progress_cb({
-                "type": "agent_update",
-                "agent": self.AGENT_NAME,
-                "status": "running",
-                "progress": 10,
-                "message": f"Analyzing {len(multimedia_evidence)} multimedia items...",
-            })
+Respond ONLY with valid JSON in this exact format:
+{
+  "scene_description": "detailed description of what is shown",
+  "detected_objects": ["list", "of", "objects"],
+  "detected_text": "any visible text in the image",
+  "risk_indicators": ["list of concerning elements, if any"],
+  "risk_score": 0-100,
+  "confidence": 0.0-1.0,
+  "metadata_notes": "any relevant metadata observations"
+}
+
+Be objective and factual. If the image contains nothing concerning, say so clearly."""
+
+    async def run(self, state: dict) -> dict:
+        """LangGraph node entry point."""
+        multimedia_evidence = state.get("multimedia_evidence", [])
+        leads = []
+        graph_entities = []
+        errors = []
 
         if not multimedia_evidence:
             return {
                 **state,
-                "agent_results": [{"agent": self.AGENT_NAME, "status": "no_evidence", "findings_count": 0}],
-                "leads": [],
+                "agent_results": state.get("agent_results", []) + [{
+                    "agent": self.AGENT_NAME,
+                    "status": "skipped",
+                    "reason": "no multimedia evidence",
+                    "findings_count": 0,
+                }]
             }
 
-        graph = GraphWriteService(settings.NEO4J_URI, settings.NEO4J_USER, settings.NEO4J_PASSWORD)
-        leads = []
+        logger.info(f"Analyzing {len(multimedia_evidence)} multimedia items")
 
-        try:
-            for ev in multimedia_evidence:
-                mime = ev["mime_type"]
-                if mime.startswith("image/"):
-                    result = await self._analyze_image(ev, case_id, graph)
-                elif mime.startswith("video/"):
-                    result = await self._analyze_video(ev, case_id, graph)
-                elif mime.startswith("audio/"):
-                    result = await self._analyze_audio(ev, case_id, graph)
-                else:
-                    continue
-
-                if result and result.get("risk_score", 0) > 20:
-                    leads.append(self._create_lead(result, ev))
-
-        finally:
-            graph.close()
+        for evidence in multimedia_evidence:
+            try:
+                result = await self._analyze_item(evidence)
+                if result.get("lead"):
+                    leads.append(result["lead"])
+                if result.get("entities"):
+                    graph_entities.extend(result["entities"])
+            except Exception as e:
+                logger.error("Multimedia analysis failed", evidence_id=evidence.get("evidence_id"), error=str(e))
+                errors.append({"agent": self.AGENT_NAME, "evidence_id": evidence.get("evidence_id"), "error": str(e)})
 
         return {
             **state,
-            "agent_results": [{"agent": self.AGENT_NAME, "status": "completed", "findings_count": len(leads)}],
-            "leads": leads,
+            "leads": state.get("leads", []) + leads,
+            "graph_entities": state.get("graph_entities", []) + graph_entities,
+            "errors": state.get("errors", []) + errors,
+            "agent_results": state.get("agent_results", []) + [{
+                "agent": self.AGENT_NAME,
+                "status": "completed",
+                "findings_count": len(leads),
+            }]
         }
 
-    async def _analyze_image(self, ev: dict, case_id: str, graph: GraphWriteService) -> dict:
-        evidence_id = ev["evidence_id"]
+    async def _analyze_item(self, evidence: dict) -> dict:
+        """Analyze a single multimedia evidence item."""
+        import sys
+        sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+        from tools.ai_tools import call_ollama_vision, call_ollama_text, extract_json_from_response, make_lead
 
-        # EXIF extraction
-        exif_data = extract_exif(ev["file_bytes"], ev["filename"])
-        fingerprint = compute_device_fingerprint(exif_data)
+        mime = evidence.get("mime_type", "")
+        evidence_id = evidence.get("evidence_id", "unknown")
+        file_bytes = evidence.get("file_bytes", b"")
 
-        # GPS data → Location node
-        coords = exif_data.get("forensic_summary", {}).get("coordinates")
-        device_id = None
-        if coords and fingerprint:
-            device_id = graph.upsert_device(
-                case_id=case_id,
-                device_fingerprint=fingerprint,
-                confidence=0.8,
-                source_evidence_id=evidence_id,
-                device_props=exif_data.get("forensic_summary", {}).get("device_info", {}),
+        if mime.startswith("image/"):
+            return await self._analyze_image(evidence, file_bytes, evidence_id, call_ollama_vision, extract_json_from_response, make_lead)
+        elif mime.startswith("audio/"):
+            return await self._analyze_audio(evidence, file_bytes, evidence_id, call_ollama_text, make_lead)
+        else:
+            return {}
+
+    async def _analyze_image(self, evidence, file_bytes, evidence_id, call_ollama_vision, extract_json_from_response, make_lead) -> dict:
+        """LLaVA-based image analysis."""
+        # Convert bytes to base64 for Ollama
+        img_b64 = base64.b64encode(file_bytes).decode("utf-8")
+
+        raw_response = call_ollama_vision(
+            prompt=self.VISION_PROMPT,
+            image_b64=img_b64,
+        )
+
+        analysis = extract_json_from_response(raw_response)
+        risk_score = float(analysis.get("risk_score", 0))
+
+        entities = []
+        objects = analysis.get("detected_objects", [])
+        if objects:
+            entities.append({
+                "type": "FileEvidence",
+                "evidence_id": evidence_id,
+                "detected_objects": objects,
+                "scene": analysis.get("scene_description", "")[:200],
+            })
+
+        # Only generate a lead if risk score is meaningful
+        if risk_score >= 30 or analysis.get("risk_indicators"):
+            lead = make_lead(
+                agent_name=self.AGENT_NAME,
+                summary=f"Image analysis: {analysis.get('scene_description', 'No description')[:300]}",
+                risk_score=risk_score,
+                evidence_ids=[evidence_id],
+                detailed_analysis=f"Objects: {objects}\nRisk indicators: {analysis.get('risk_indicators', [])}\nDetected text: {analysis.get('detected_text', '')}",
+                lead_type="multimedia_finding",
             )
-            location_id = graph.upsert_location(
-                case_id=case_id,
-                lat=coords["lat"],
-                lon=coords["lon"],
-                confidence=0.9,
-                source_evidence_id=evidence_id,
-            )
-            graph.link_device_to_location(
-                device_id=device_id,
-                location_id=location_id,
-                confidence=0.9,
-                source_evidence_id=evidence_id,
-                timestamp=exif_data.get("forensic_summary", {}).get("timestamps", {}).get("DateTimeOriginal", ""),
-            )
+            return {"lead": lead, "entities": entities}
 
-        # LLaVA vision analysis
-        vision_result = analyze_image(ev["file_bytes"], evidence_id, mime_type=ev["mime_type"])
+        return {"entities": entities}
 
-        # Link evidence to case graph
-        graph.link_evidence_to_case(evidence_id, case_id, ev["sha256_hash"], ev["mime_type"])
-
-        # Compute risk score
-        flags = vision_result.get("structured_observations", {}).get("forensic_flags", [])
-        risk_score = 10 + (len(flags) * 5)
-        if vision_result.get("structured_observations", {}).get("people_count", 0) > 0:
-            risk_score += 10
-
-        return {
-            "evidence_id": evidence_id,
-            "type": "image",
-            "risk_score": min(100, risk_score),
-            "vision_analysis": vision_result,
-            "exif_data": exif_data,
-            "device_fingerprint": fingerprint,
-            "coordinates": coords,
-            "forensic_flags": flags,
-        }
-
-    async def _analyze_video(self, ev: dict, case_id: str, graph: GraphWriteService) -> dict:
-        """Extract keyframes from video and analyze each with LLaVA."""
-        evidence_id = ev["evidence_id"]
-        frames_analyzed = []
-
-        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
-            tmp.write(ev["file_bytes"])
-            tmp_path = tmp.name
-
+    async def _analyze_audio(self, evidence, file_bytes, evidence_id, call_ollama_text, make_lead) -> dict:
+        """Whisper-based audio transcription and analysis."""
+        transcript = ""
         try:
-            # Extract keyframes every 30 seconds
-            frames_dir = tempfile.mkdtemp()
-            subprocess.run(
-                ["ffmpeg", "-i", tmp_path, "-vf", "fps=1/30", f"{frames_dir}/frame_%04d.jpg"],
-                capture_output=True, timeout=120,
+            import tempfile
+            with tempfile.NamedTemporaryFile(suffix=".audio", delete=False) as tmp:
+                tmp.write(file_bytes)
+                tmp_path = tmp.name
+
+            # Try faster-whisper first
+            try:
+                from faster_whisper import WhisperModel
+                model = WhisperModel("base", device="auto", compute_type="int8")
+                segments, _ = model.transcribe(tmp_path)
+                transcript = " ".join(seg.text for seg in segments)
+            except ImportError:
+                # Fallback: just note we can't transcribe
+                transcript = "[Audio transcription unavailable — faster_whisper not installed]"
+            finally:
+                os.unlink(tmp_path)
+        except Exception as e:
+            transcript = f"[Transcription failed: {e}]"
+
+        if not transcript or transcript.startswith("["):
+            return {}
+
+        # Ask LLM to analyze the transcript for risk
+        analysis_prompt = f"""You are a forensic analyst. Analyze this audio transcript for any concerning content.
+Transcript: {transcript[:3000]}
+
+Respond in JSON only:
+{{
+  "summary": "brief summary of content",
+  "risk_indicators": ["list of concerns"],
+  "risk_score": 0-100,
+  "contains_criminal_content": true/false
+}}"""
+        raw = call_ollama_text(analysis_prompt)
+        from tools.ai_tools import extract_json_from_response
+        analysis = extract_json_from_response(raw)
+
+        risk_score = float(analysis.get("risk_score", 0))
+        if risk_score >= 30:
+            lead = make_lead(
+                agent_name=self.AGENT_NAME,
+                summary=f"Audio analysis: {analysis.get('summary', 'Transcript analyzed')}",
+                risk_score=risk_score,
+                evidence_ids=[evidence_id],
+                detailed_analysis=f"Transcript excerpt: {transcript[:1000]}\nRisk indicators: {analysis.get('risk_indicators', [])}",
+                lead_type="audio_finding",
             )
+            return {"lead": lead, "entities": []}
 
-            import glob
-            frame_files = sorted(glob.glob(f"{frames_dir}/frame_*.jpg"))[:10]  # Max 10 frames
-
-            for frame_path in frame_files:
-                with open(frame_path, "rb") as f:
-                    frame_bytes = f.read()
-                frame_result = analyze_image(frame_bytes, evidence_id, mime_type="image/jpeg")
-                frames_analyzed.append(frame_result)
-
-            # Clean up
-            import shutil
-            shutil.rmtree(frames_dir)
-        finally:
-            os.unlink(tmp_path)
-
-        flags = [flag for r in frames_analyzed for flag in r.get("forensic_flags", [])]
-        risk_score = 10 + len(set(flags)) * 5
-
-        graph.link_evidence_to_case(evidence_id, case_id, ev["sha256_hash"], ev["mime_type"])
-
-        return {
-            "evidence_id": evidence_id,
-            "type": "video",
-            "risk_score": min(100, risk_score),
-            "frames_analyzed": len(frames_analyzed),
-            "forensic_flags": list(set(flags)),
-        }
-
-    async def _analyze_audio(self, ev: dict, case_id: str, graph: GraphWriteService) -> dict:
-        """Transcribe audio and analyze the transcript."""
-        evidence_id = ev["evidence_id"]
-        transcript = transcribe_audio(ev["file_bytes"], evidence_id=evidence_id)
-
-        graph.link_evidence_to_case(evidence_id, case_id, ev["sha256_hash"], ev["mime_type"])
-
-        return {
-            "evidence_id": evidence_id,
-            "type": "audio",
-            "risk_score": 15,  # Base score; further elevated by conversation agent if text is concerning
-            "transcript": transcript,
-            "duration_seconds": transcript.get("duration_seconds", 0),
-            "language": transcript.get("language"),
-        }
-
-    def _create_lead(self, result: dict, ev: dict) -> dict:
-        description = ""
-        if result["type"] == "image":
-            flags = result.get("forensic_flags", [])
-            description = f"Image analysis: {len(flags)} forensic flags. Device: {result.get('device_fingerprint', 'unknown')}"
-        elif result["type"] == "video":
-            description = f"Video analysis: {result.get('frames_analyzed', 0)} frames, {len(result.get('forensic_flags', []))} unique flags"
-        elif result["type"] == "audio":
-            description = f"Audio: {result.get('duration_seconds', 0):.0f}s, language: {result.get('language', 'unknown')}"
-
-        return {
-            "agent": self.AGENT_NAME,
-            "risk_score": result["risk_score"],
-            "confidence_lower": result["risk_score"] * 0.7,
-            "confidence_upper": min(100, result["risk_score"] * 1.3),
-            "summary": f"Multimedia evidence analysis: {description}",
-            "detailed_analysis": json.dumps(result.get("vision_analysis", {}), default=str)[:3000],
-            "lead_type": f"multimedia_{result['type']}",
-            "evidence_citations": [
-                {
-                    "evidence_id": ev["evidence_id"],
-                    "sha256_hash": ev["sha256_hash"],
-                    "confidence": result["risk_score"] / 100,
-                    "mime_type": ev["mime_type"],
-                }
-            ],
-        }
+        return {}

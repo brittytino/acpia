@@ -5,13 +5,32 @@ Returns graph data for the frontend Cytoscape.js explorer.
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional
 import structlog
+from contextlib import asynccontextmanager
 
 from app.auth.keycloak import get_current_user, CurrentUser
-from app.database import neo4j_session
+from app.config import settings
 from app.schemas.schemas import GraphResponse, GraphNode, GraphEdge
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(tags=["Knowledge Graph"])
+
+
+def _get_neo4j_driver():
+    """Get a Neo4j async driver instance."""
+    from neo4j import AsyncGraphDatabase
+    return AsyncGraphDatabase.driver(
+        settings.NEO4J_URI,
+        auth=(settings.NEO4J_USER, settings.NEO4J_PASSWORD),
+    )
+
+
+@asynccontextmanager
+async def neo4j_session():
+    """Context manager that yields a Neo4j async session."""
+    driver = _get_neo4j_driver()
+    async with driver.session() as session:
+        yield session
+    await driver.close()
 
 
 @router.get("/cases/{case_id}/graph", response_model=GraphResponse)
@@ -25,65 +44,70 @@ async def get_case_graph(
     """
     Get the knowledge graph subview for a case.
     Returns nodes and edges formatted for Cytoscape.js visualization.
+    Returns empty graph if Neo4j has no data yet (not an error).
     """
     allowed_types = set(node_types.split(",")) if node_types else {"Person", "Device", "Platform", "Location", "FileEvidence"}
 
-    async with neo4j_session() as session:
-        # Query all entities and relationships for this case
-        result = await session.run(
-            """
-            MATCH (c:Case {case_id: $case_id})<-[:PART_OF]-(f:FileEvidence)
-            WITH f
-            MATCH path = (n)-[r]-(m)
-            WHERE (n:Person OR n:Device OR n:Platform OR n:Location OR n:FileEvidence)
-              AND (m:Person OR m:Device OR m:Platform OR m:Location OR m:FileEvidence)
-              AND (n)-[:PART_OF|RELATED_TO*..3]-(:Case {case_id: $case_id})
-              AND (r.confidence IS NULL OR r.confidence >= $min_confidence)
-            RETURN DISTINCT
-                id(n) AS src_id, labels(n)[0] AS src_label, properties(n) AS src_props,
-                id(m) AS tgt_id, labels(m)[0] AS tgt_label, properties(m) AS tgt_props,
-                id(r) AS rel_id, type(r) AS rel_type, properties(r) AS rel_props
-            LIMIT 500
-            """,
-            case_id=case_id,
-            min_confidence=min_confidence,
-        )
+    try:
+        async with neo4j_session() as session:
+            result = await session.run(
+                """
+                MATCH (c:Case {case_id: $case_id})<-[:PART_OF]-(f:FileEvidence)
+                WITH f
+                MATCH path = (n)-[r]-(m)
+                WHERE (n:Person OR n:Device OR n:Platform OR n:Location OR n:FileEvidence)
+                  AND (m:Person OR m:Device OR m:Platform OR m:Location OR m:FileEvidence)
+                  AND (n)-[:PART_OF|RELATED_TO*..3]-(:Case {case_id: $case_id})
+                  AND (r.confidence IS NULL OR r.confidence >= $min_confidence)
+                RETURN DISTINCT
+                    id(n) AS src_id, labels(n)[0] AS src_label, properties(n) AS src_props,
+                    id(m) AS tgt_id, labels(m)[0] AS tgt_label, properties(m) AS tgt_props,
+                    id(r) AS rel_id, type(r) AS rel_type, properties(r) AS rel_props
+                LIMIT 500
+                """,
+                case_id=case_id,
+                min_confidence=min_confidence,
+            )
 
-        nodes_map = {}
-        edges = []
+            nodes_map = {}
+            edges = []
 
-        async for record in result:
-            src_type = record["src_label"]
-            tgt_type = record["tgt_label"]
+            async for record in result:
+                src_type = record["src_label"]
+                tgt_type = record["tgt_label"]
 
-            if src_type in allowed_types and src_type not in nodes_map:
-                nodes_map[str(record["src_id"])] = GraphNode(
-                    id=str(record["src_id"]),
-                    label=_get_node_label(src_type, record["src_props"]),
-                    type=src_type,
-                    properties=dict(record["src_props"]),
-                    risk_score=record["src_props"].get("risk_score"),
-                )
+                if src_type in allowed_types and str(record["src_id"]) not in nodes_map:
+                    nodes_map[str(record["src_id"])] = GraphNode(
+                        id=str(record["src_id"]),
+                        label=_get_node_label(src_type, record["src_props"]),
+                        type=src_type,
+                        properties=dict(record["src_props"]),
+                        risk_score=record["src_props"].get("risk_score"),
+                    )
 
-            if tgt_type in allowed_types and tgt_type not in nodes_map:
-                nodes_map[str(record["tgt_id"])] = GraphNode(
-                    id=str(record["tgt_id"]),
-                    label=_get_node_label(tgt_type, record["tgt_props"]),
-                    type=tgt_type,
-                    properties=dict(record["tgt_props"]),
-                    risk_score=record["tgt_props"].get("risk_score"),
-                )
+                if tgt_type in allowed_types and str(record["tgt_id"]) not in nodes_map:
+                    nodes_map[str(record["tgt_id"])] = GraphNode(
+                        id=str(record["tgt_id"]),
+                        label=_get_node_label(tgt_type, record["tgt_props"]),
+                        type=tgt_type,
+                        properties=dict(record["tgt_props"]),
+                        risk_score=record["tgt_props"].get("risk_score"),
+                    )
 
-            rel_props = dict(record["rel_props"])
-            edges.append(GraphEdge(
-                id=str(record["rel_id"]),
-                source=str(record["src_id"]),
-                target=str(record["tgt_id"]),
-                relationship_type=record["rel_type"],
-                properties=rel_props,
-                confidence=float(rel_props.get("confidence", 0.5)),
-                timestamp=rel_props.get("first_ts"),
-            ))
+                rel_props = dict(record["rel_props"])
+                edges.append(GraphEdge(
+                    id=str(record["rel_id"]),
+                    source=str(record["src_id"]),
+                    target=str(record["tgt_id"]),
+                    relationship_type=record["rel_type"],
+                    properties=rel_props,
+                    confidence=float(rel_props.get("confidence", 0.5)),
+                    timestamp=rel_props.get("first_ts"),
+                ))
+
+    except Exception as e:
+        logger.warning("Neo4j graph query failed (returning empty graph)", error=str(e))
+        return GraphResponse(nodes=[], edges=[], total_nodes=0, total_edges=0, case_id=case_id)
 
     return GraphResponse(
         nodes=list(nodes_map.values()),
@@ -102,18 +126,22 @@ async def get_person_neighbors(
     current_user: CurrentUser = Depends(get_current_user),
 ):
     """Get all neighbors of a specific person node for drill-down exploration."""
-    async with neo4j_session() as session:
-        result = await session.run(
-            """
-            MATCH (p:Person {person_id: $person_id})
-            MATCH (p)-[r*1..$depth]-(neighbor)
-            RETURN p, r, neighbor
-            LIMIT 100
-            """,
-            person_id=person_id,
-            depth=depth,
-        )
-        records = [dict(r) async for r in result]
+    try:
+        async with neo4j_session() as session:
+            result = await session.run(
+                """
+                MATCH (p:Person {person_id: $person_id})
+                MATCH (p)-[r*1..$depth]-(neighbor)
+                RETURN p, r, neighbor
+                LIMIT 100
+                """,
+                person_id=person_id,
+                depth=depth,
+            )
+            records = [dict(r) async for r in result]
+    except Exception as e:
+        logger.warning("Neo4j neighbor query failed", error=str(e))
+        records = []
 
     return {"person_id": person_id, "neighbors": records}
 
