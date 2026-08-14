@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   postgres:
     image: pgvector/pgvector:pg16
@@ -5,7 +7,7 @@ services:
     environment:
       POSTGRES_DB: acpia
       POSTGRES_USER: acpia
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password123}
     ports:
       - "127.0.0.1:47800:5432"
     volumes:
@@ -14,23 +16,55 @@ services:
       test: ["CMD-SHELL", "pg_isready -U acpia -d acpia"]
       interval: 5s
       retries: 10
+    restart: unless-stopped
 
-  ollama:
-    image: ollama/ollama:latest
-    container_name: acpia-ollama
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: acpia-backend
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://acpia:${POSTGRES_PASSWORD:-password123}@postgres:5432/acpia
+      - JWT_SECRET=${JWT_SECRET:-acpia_super_secret_key_change_in_production_2026}
+      - ENVIRONMENT=production
     ports:
-      - "127.0.0.1:47801:11434"
+      - "47802:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
     volumes:
-      - acpia_ollama:/root/.ollama
-    # If you have an NVIDIA GPU, uncomment the following:
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: all
-    #           capabilities: [gpu]
+      - acpia_uploads:/tmp/uploads
+      - acpia_hashes:/data/known_hashes
+
+  seal:
+    build:
+      context: ./seal
+      dockerfile: Dockerfile
+    container_name: acpia-seal
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:47802
+    ports:
+      - "47803:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  console:
+    build:
+      context: ./police-console
+      dockerfile: Dockerfile
+    container_name: acpia-console
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:47802
+      - NEXT_PUBLIC_WS_URL=ws://localhost:47802
+    ports:
+      - "47804:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
 
 volumes:
   acpia_pgdata:
-  acpia_ollama:
+  acpia_uploads:
+  acpia_hashes:

@@ -1,0 +1,31 @@
+name: Deploy to Azure VM
+
+on:
+  push:
+    branches:
+      - main # Triggers deployment when pushing to the main branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Azure Virtual Machine via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.AZURE_VM_IP }}
+          username: ${{ secrets.AZURE_VM_USERNAME }}
+          key: ${{ secrets.AZURE_VM_SSH_KEY }}
+          script: |
+            # Navigate to the repository directory
+            # Make sure you clone the repo to this path initially on the server!
+            cd /home/${{ secrets.AZURE_VM_USERNAME }}/acpia
+            
+            # Pull the latest changes from the main branch
+            git pull origin main
+            
+            # Rebuild and restart the Docker containers gracefully
+            docker compose up -d --build
