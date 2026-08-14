@@ -1,255 +1,105 @@
-# ACPIA — 3-Phase Team Development Plan
-## From Current State to Working End-to-End Product (3 developers, parallel tracks)
+# ACPIA — 3-Hour Hackathon Final Crunch Plan
+## Code Red: End-to-End Product in < 3 Hours (3 Developers, Parallel Tracks)
 
 **Team:**
-- **Tino** — AI / Multi-Agent Pipeline (has the GPU laptop → owns everything that needs local model inference)
+- **Tino** — AI / Multi-Agent Pipeline (GPU Laptop)
 - **Barath** — Backend, Infrastructure, Data, Security
-- **Chinnaya** — Frontend, Dashboard, Reporting, Demo Experience
+- **Chinnaya** — Frontend, UI, Dashboard, Demo Experience
 
-**Core idea of this plan:** the reason teams collide is that everyone needs everyone else's half-finished work to test their own. So before anyone writes a feature, we lock the **contracts** between the three tracks (API shapes, DB schema, message queue topics, Docker network). Once those are locked, all three of you can build against **mocks/stubs** of each other's work and never block each other until integration day.
-
----
-
-## 0. DAY ZERO — Fix the Docker Blocker (whole team, ~1–2 hours, do this together first)
-
-This blocks everyone, so it's not part of anyone's individual track — knock it out together before splitting up.
-
-**Root cause:** Docker Desktop (or Docker Engine) on this host has a restricted list of directories it's allowed to bind-mount from. `/mnt/Data/SRCAS HACKATHON/acpia` isn't in that allow-list.
-
-**Fix — do whichever applies to your OS:**
-
-- **Docker Desktop (Windows/Mac):** Settings → Resources → File Sharing → add `/mnt/Data` (or the specific project path) to the shared paths list → Apply & Restart.
-- **Docker Engine (Linux, e.g. WSL2 backend):** bind-mount restrictions usually come from where the project sits relative to the WSL filesystem. **Simplest fix:** move the project directory *inside* the Linux filesystem (e.g. `~/acpia` inside WSL) instead of a Windows-mounted path like `/mnt/Data/...` — bind mounts from paths under `/mnt/c` or similar cross-OS mounts are exactly what trips this error.
-- **If you truly cannot move the folder or edit Docker's settings:** switch strategy per Phase 1 below — bake source into images with `COPY` instead of bind-mounting, and use **named Docker volumes** (not host bind mounts) for anything that needs to persist (Postgres data, Neo4j data, MinIO data). Named volumes are always allowed regardless of host path restrictions.
-
-**Action:** rename the project folder to something without spaces and move it under a plain path, e.g. `~/projects/acpia` or `C:\dev\acpia` — spaces in Docker bind-mount paths (`SRCAS HACKATHON`) are also a classic source of this exact failure independent of the sharing settings. Do this rename **before** anything else; it fixes two problems at once.
-
-Once `docker compose up` boots cleanly with a trivial "hello world" service, move to the phases below.
+**The Strategy:**
+You have less than 3 hours. The codebase is already heavily scaffolded by your AI agents, but the pieces are not connected. You are all on the same Wi-Fi. 
+**Barath's laptop will act as the Main Server (Databases + API).**
+**Tino's laptop will act as the AI Inference Server.**
+**Chinnaya will run the Frontend and connect to Barath's API.**
 
 ---
 
-## 1. THE CONTRACT LAYER (lock this first, ~half a day, all 3 together)
+## HOUR 1: Unblocking & Infrastructure (0:00 - 1:00)
 
-This is the single most important artifact for letting 3 people work without stepping on each other. Spend real time on it before splitting up.
+### ⚙️ Barath (The Main Server)
+1. **Find your IP Address:** Get your local Wi-Fi IP (e.g., `192.168.1.15`). Post it in the team chat. **Tino and Chinnaya will use this IP.**
+2. **Fix the Docker Blocker:** The Docker daemon is rejecting bind mounts. 
+   - Open `docker-compose.yml`.
+   - **Remove ALL host bind-mounts** (`- ./...:/...`) for Postgres, Keycloak, etc. Replace them with named Docker volumes or just remove the volumes entirely if you don't mind data loss on container restart.
+   - Run `docker compose up -d postgres neo4j minio redis opensearch keycloak`.
+3. **Database Migrations:** 
+   - Install backend dependencies (`pip install -r requirements.txt`).
+   - Run Alembic migrations: `alembic upgrade head`.
+   - Run the seed script: `python scripts/seed.py` to create the admin/investigator users.
+4. **Start the API:** Run the FastAPI backend natively on your laptop (`uvicorn app.main:app --host 0.0.0.0 --port 8000`).
 
-### 1.1 Git branching strategy
+### 🧠 Tino (The AI Server)
+1. **Pull the AI Models Immediately:** Open your terminal and run:
+   - `ollama pull llama3.1:8b`
+   - `ollama pull llava:13b`
+   - `ollama pull nomic-embed-text`
+   *(This takes time. Start it NOW while you do step 2).*
+2. **Configure Environment:** Create your `.env` file for the Celery workers. 
+   - Point `POSTGRES_HOST`, `NEO4J_URI`, `REDIS_URL`, and `MINIO_ENDPOINT` to **Barath's IP address** (e.g., `192.168.1.15`).
+   - Set `OLLAMA_BASE_URL=http://localhost:11434` (since Ollama runs on your machine).
+3. **Start Celery Workers:** Once Barath says his databases are up, start the Celery workers on your machine: `celery -A app.workers.celery_app worker --loglevel=info`.
 
-```
-main                  → always deployable, protected, merge via PR only
-  ├─ tino/ai-pipeline      → Tino's entire track
-  ├─ barath/backend-infra  → Barath's entire track
-  └─ chinnaya/frontend     → Chinnaya's entire track
-```
-
-- Each person branches off `main`, commits freely on their own branch, opens a PR back to `main` at the end of each phase (not continuously — see integration checkpoints below).
-- **Never rebase/force-push shared branches.** `main` only moves forward via PR merge.
-- Add a `docker-compose.override.yml` per person locally if you need to run a subset of services (e.g. Chinnaya doesn't need Ollama running to build UI against mocked API responses).
-
-### 1.2 The API contract (Barath owns and publishes this — everyone else builds against it, not against Barath's actual running code)
-
-Barath writes the OpenAPI spec (FastAPI auto-generates this from Pydantic schemas + route signatures) **before** implementing full business logic. Stub every endpoint to return realistic fake JSON matching the final shape. Push this to `main` on day one of Phase 1.
-
-This unblocks Tino and Chinnaya immediately:
-- **Tino** doesn't need the real database — his agents write to a `GraphWriteService` interface and call a `LeadService.create_lead()` interface. He can build/test those interfaces against a local Neo4j + a stubbed Postgres, independent of Barath's auth/RBAC work.
-- **Chinnaya** doesn't need real AI running — the frontend calls the same FastAPI endpoints, which return stub JSON matching the final response shape (see the `lead` object example below). She can build the entire dashboard against those stubs and swap to live data on integration day with zero UI code changes, because the *shape* never changes.
-
-**Lock this JSON shape now (from the architecture doc) — nobody changes it without telling the other two:**
-
-```json
-{
-  "lead_id": "uuid",
-  "case_id": "uuid",
-  "generated_by_agent": "conversation_intelligence",
-  "risk_score": 78.4,
-  "confidence_interval": [71.2, 84.9],
-  "status": "pending | confirmed | rejected",
-  "summary": "string",
-  "evidence_citations": [
-    {"evidence_id": "uuid", "excerpt_ref": "string", "sha256_hash": "string"}
-  ]
-}
-```
-
-### 1.3 The queue/topic contract (how Tino's agents and Barath's backend talk to each other)
-
-Since Celery is already in place, lock the task names and payload shapes now:
-
-```
-Task: analyze_evidence(evidence_id: str, case_id: str, mime_type: str)
-  → dispatched by Barath's ingestion endpoint after upload completes
-  → consumed by Tino's LangGraph orchestrator entrypoint
-
-Task: pipeline_progress_update(case_id: str, agent_name: str, status: str, pct: int)
-  → published by Tino's agents as they run
-  → consumed by Barath's WebSocket broadcaster (/api/v1/cases/{id}/stream)
-  → displayed live by Chinnaya's frontend progress bar
-```
-
-Write these three signatures into a shared `CONTRACTS.md` in the repo root. Any change to a signature = a message in the team chat before pushing, not a silent change.
-
-### 1.4 The Docker network contract
-
-Barath owns `docker-compose.yml`. Every service name is fixed now so nobody hardcodes `localhost:PORT` anywhere — always use the service name (Docker's internal DNS resolves it):
-
-```
-postgres:5432   neo4j:7687   redis:6379   minio:9000
-ollama:11434    opensearch:9200   keycloak:8080
-backend:8000    frontend:3000     prometheus:9090   grafana:3001
-```
+### 🎨 Chinnaya (The Client)
+1. **Setup Frontend:** Go to the `frontend` directory. Run `npm install`.
+2. **Configure Environment:** Create a `.env.local` file.
+   - Set `NEXT_PUBLIC_API_URL=http://<BARATH_IP>:8000`.
+   - Set `NEXT_PUBLIC_KEYCLOAK_URL=http://<BARATH_IP>:8080`.
+3. **Start UI & Fix CORS:** Run `npm run dev`. Try to log in using `admin` / `Admin@acpia1`.
+   - *If you get CORS errors*, tell Barath immediately so he can add your IP to the FastAPI CORS origins list.
 
 ---
 
-## 2. PHASE 1 — Foundation (Week 1): each track becomes independently runnable
+## HOUR 2: Core Feature Completion (1:00 - 2:00)
 
-Goal by end of Phase 1: each person can run **their own slice** of the stack end-to-end using mocks for the other two tracks, on their own machine, without needing anyone else online.
+### ⚙️ Barath (Backend)
+1. **Implement PDF Report Endpoint:** The frontend report page needs a backend API. Write a simple endpoint at `GET /api/v1/cases/{id}/report`. Use a lightweight library (like `fpdf2` or `xhtml2pdf`) to generate a basic PDF showing the case summary and confirmed leads. 
+2. **Test File Ingestion:** Send a mock image file to your own ingestion endpoint. Check MinIO (at `localhost:9001`) to see if the file uploaded, and check Postgres to ensure the `EvidenceItem` and `ChainOfCustodyLog` were created.
+3. **Monitor Celery:** Ensure that when you upload a file, the `analyze_evidence` task is successfully pushed to Redis (which Tino's machine will pick up).
 
-### 🧠 Tino — AI / Multi-Agent Pipeline (GPU-dependent track)
+### 🧠 Tino (AI Agents)
+1. **Unit Test Agents:** Your models should be downloaded by now. Manually trigger one of the agent python scripts (e.g., `python agents/agents/multimedia_analyst.py`) with a sample hardcoded image path. Verify that LLaVA returns a valid JSON response.
+2. **Monitor the Pipeline:** Watch your Celery worker logs. When Barath uploads a file, your worker should pick it up and run the LangGraph pipeline.
+3. **Debug AI Errors:** If the LLM returns malformed JSON or times out, tweak the prompt or temperature in the agent files. This is your primary focus: making sure the AI pipeline doesn't crash on real data.
 
-| Task | Detail |
-|---|---|
-| Get Ollama running locally | `ollama pull llama3.1:8b`, `ollama pull llava:13b` (or `qwen2-vl` if faster on your GPU), `ollama pull nomic-embed-text`. Do these pulls **once**, early — they're large and this is the #1 thing that silently blocks a demo day. |
-| Benchmark your GPU | Run a timed test transcription (Whisper) and a timed vision-caption call (LLaVA) on sample files. Record seconds-per-file — this number drives how many files you can realistically process live in a demo, so know it early, don't discover it on stage. |
-| Stand up `faster-whisper` or `whisper.cpp` | Pick whichever runs faster on your specific GPU/VRAM — benchmark both if time allows, don't assume. |
-| Build each of the 8 agents as an independent, testable function first | Don't build the LangGraph orchestration graph until each agent works standalone on a sample file with a hardcoded input. Test agent-by-agent before wiring the graph — this isolates bugs massively faster. |
-| Wire the LangGraph orchestrator | Once all 8 agents work standalone, connect them in LangGraph with the parallel-dispatch structure from the architecture doc. |
-| `GraphWriteService` | Build this against your **own local Neo4j instance** (not waiting for Barath) — Neo4j is stateless enough that you can run a throwaway local copy, test your Cypher writes work, and reconnect to the shared instance on integration day. |
-| Stylometry + identity resolution scoring | This is pure Python (spaCy features + simple similarity scoring) — no GPU needed, can be developed even without Ollama running if you want a lighter dev loop. |
-| Deliverable by end of Phase 1 | A CLI script: `python run_pipeline.py --file sample.jpg --case-id test123` that runs all 8 agents on one file and prints/writes the resulting leads + graph writes, entirely offline from Barath/Chinnaya's work. |
-
-**What Tino needs from Barath by end of Phase 1:** nothing blocking — just the locked `CONTRACTS.md` task signatures from section 1.3.
-
-### ⚙️ Barath — Backend, Infra, Data, Security
-
-| Task | Detail |
-|---|---|
-| Fix Docker Compose per Phase 1 of the audit doc | Remove host bind mounts for `backend`/`frontend`; build them as proper images with `COPY . /app` in the Dockerfile. Use named volumes for Postgres/Neo4j/MinIO data (`volumes: pg_data:`, not `- ./data:/var/lib/postgresql/data`). |
-| Alembic migrations | Generate and run migrations from the existing SQLAlchemy models so tables physically exist. Commit the migration files — this is how Tino and Chinnaya get a real schema to test against later. |
-| Enforce append-only chain-of-custody at the DB role level | `REVOKE UPDATE, DELETE ON chain_of_custody_log FROM app_user;` — do this in a migration, not just in application code, per the architecture doc's Section 11.1 principle. |
-| Keycloak realm setup | Import the ACPIA realm (roles: investigator/supervisor/admin), get JWT middleware validating real tokens instead of any temporary bypass. |
-| Publish the OpenAPI stub contract (Section 1.2) | This is the highest-priority task in your whole track — Tino and Chinnaya are both waiting on the *shape*, not the real logic behind it. Do this on day 1–2, not last. |
-| Ingestion endpoint | SHA-256 hash on upload, write to MinIO, write `EvidenceItem` + first `ChainOfCustodyLog` row, then publish the `analyze_evidence` Celery task (contract from Section 1.3) — stub the Celery consumer for now if Tino isn't ready yet, just prove the task gets published. |
-| WebSocket progress endpoint | `/api/v1/cases/{id}/stream` — stub it broadcasting fake progress events first so Chinnaya can build the UI against it immediately. |
-| Seed script | `scripts/seed.py` creates one admin + one investigator user, one demo case — everyone needs this to log in and test. |
-| Deliverable by end of Phase 1 | `docker compose up` boots Postgres + Neo4j + MinIO + Redis + Keycloak + backend cleanly, with a working login, a working (stubbed) `/leads` endpoint returning the locked JSON shape, and a real ingestion endpoint that hashes + stores files. |
-
-**What Barath needs from Tino/Chinnaya by end of Phase 1:** nothing blocking — just confirmation they're building against the published contract.
-
-### 🎨 Chinnaya — Frontend, Dashboard, Reporting
-
-| Task | Detail |
-|---|---|
-| Stand up Next.js against **mocked** API responses first | Use the locked JSON shapes from `CONTRACTS.md` — build a local mock server (e.g. `msw` — Mock Service Worker, or just a tiny JSON file served by `json-server`) so you never wait on Barath's real backend to build UI. |
-| Login page | Wire to Keycloak once Barath's realm is importable — until then, mock the auth state so you can build every other screen. |
-| Dashboard / analytics screen | Recharts visualizations against mock lead data (priority distribution, status breakdown) — this is pure frontend work, fully parallel. |
-| Evidence upload UI | Drag-and-drop → hits `POST /cases/{id}/evidence` — build against Barath's real ingestion endpoint once it exists (should be ready early in his Phase 1), since this is the one piece worth integrating early rather than mocking, to catch multipart/CORS issues before demo week. |
-| Human-in-the-loop review UI | The lead cards, risk score + confidence interval display, confirm/reject buttons — build entirely against the locked JSON shape and mock data. |
-| Graph Explorer (Cytoscape.js) | Build against a **static sample graph JSON** you write by hand (a few nodes/edges matching the Neo4j schema in the architecture doc) — don't wait for real graph data to exist. |
-| Live progress bar | Wire to the WebSocket contract (Section 1.3) — Barath's stub broadcaster is enough to build and test this fully. |
-| Deliverable by end of Phase 1 | A fully click-through-able frontend running against mocks: login → dashboard → upload → (fake) live progress → lead review → graph explorer — nothing real yet, but every screen exists and works. |
-
-**What Chinnaya needs from Barath by end of Phase 1:** the OpenAPI stub contract (should land day 1–2) and the ingestion endpoint (should land by end of week).
+### 🎨 Chinnaya (Frontend UI)
+1. **UI Polish:** 
+   - Check the Graph Explorer (`/cases/{id}/graph`). Does Cytoscape render correctly? Add some dummy nodes to test it if Barath's DB is empty.
+   - Check the Evidence drag-and-drop. Is the progress bar working?
+2. **Prep Demo Data:** Find 3-5 real, legal, non-sensitive sample files to use for the demo (e.g., a sample image with EXIF data, a dummy chat log text file). Do NOT use real sensitive data. Put them in a folder ready for the live demo.
 
 ---
 
-## 3. PHASE 2 — Integration (Week 2): swap mocks for real connections, one seam at a time
+## HOUR 3: End-to-End Testing & Demo Prep (2:00 - 3:00)
 
-Goal by end of Phase 2: the three tracks are talking to each other for real, end-to-end, even if rough around the edges.
+**This hour requires all 3 of you communicating constantly.**
 
-**Integration checkpoints — do these as small, scheduled syncs, not one giant merge day:**
+1. **The Golden Path Test (2:00 - 2:20):**
+   - Chinnaya logs into the frontend (hitting Barath's server).
+   - Chinnaya creates a new Case.
+   - Chinnaya uploads a sample image from her demo folder.
+   - Barath verifies the API receives it, hashes it, saves to MinIO, and dispatches to Celery.
+   - Tino verifies his Celery worker picks up the task, queries Ollama on his GPU, extracts entities, and writes to Neo4j.
+   - Chinnaya refreshes the Dashboard and verifies the Lead appears and the Knowledge Graph populates.
+   - Chinnaya clicks "Download Report" and verifies Barath's PDF endpoint works.
 
-| Checkpoint | Who | What |
+2. **Squash Showstopper Bugs (2:20 - 2:40):**
+   - Whatever broke in the Golden Path test, fix it immediately. 
+   - If an AI agent is failing, bypass it or hardcode a fallback response so the demo doesn't crash.
+   - If CORS is blocking the PDF download, fix the headers.
+
+3. **Record the Fallback Demo (2:40 - 3:00):**
+   - **CRITICAL:** Live AI demos fail. The Wi-Fi will drop, or the GPU will OOM (Out of Memory). 
+   - Chinnaya shares her screen. Run through the Golden Path flawlessly and **record it as a video (MP4)**. 
+   - During the actual presentation, do it live, but if *anything* hangs for more than 10 seconds, smoothly switch to playing the recorded video. The judges won't penalize you for having a backup plan.
+
+---
+
+## Quick Reference / Troubleshooting
+
+| Issue | Who Fixes It | How to Fix |
 |---|---|---|
-| **Checkpoint A** (early Week 2) | Barath + Chinnaya | Swap Chinnaya's mocked API calls for Barath's real (still partially stubbed) backend. Fix CORS/auth/shape mismatches now, while the surface area is small. |
-| **Checkpoint B** (mid Week 2) | Barath + Tino | Barath's ingestion endpoint publishes the real Celery task; Tino's pipeline actually consumes it and writes real leads to Postgres + real graph data to the shared Neo4j instance (not Tino's local throwaway copy anymore). |
-| **Checkpoint C** (late Week 2) | All 3 | Full loop: upload evidence in the real UI → real Celery task → real LangGraph pipeline runs → real lead appears in Postgres → real WebSocket progress shows in the UI → investigator confirms the lead in the real review screen → real graph shows in Cytoscape. |
-
-### Per-person Phase 2 focus
-
-**Tino:**
-- Replace the local throwaway Neo4j with writes to the shared instance; verify Cypher writes match the schema Barath migrated.
-- Tune per-agent timeouts — Celery tasks need realistic time limits based on your Phase 1 GPU benchmarks, or long-running vision/audio jobs will get killed.
-- Add retry/error handling per agent so one agent failing doesn't silently kill the whole case's pipeline — surface partial failures instead of nothing.
-
-**Barath:**
-- Remove the WebSocket/lead-endpoint stubs, wire to real data.
-- Implement the `/report` endpoint (this was flagged as an open action item in the audit) — use **WeasyPrint** (HTML/CSS → PDF, easier to style nicely) or **ReportLab** (more control, more code) to generate the sourced case report PDF.
-- Load-test the ingestion endpoint with a batch of files to catch Celery queue backpressure issues before demo day.
-- Finalize RBAC — confirm supervisor/investigator/admin roles actually restrict what each can see/do, not just log in.
-
-**Chinnaya:**
-- Real-time progress bar against real WebSocket events (which will be bursty/uneven now, unlike the smooth mock) — handle that gracefully in the UI (spinners, partial states).
-- Real graph data in Cytoscape — real data is messier than your hand-written sample, so this is where layout/performance tuning happens (large graphs need clustering/pagination, not naive full-render).
-- Report download button → wired to Barath's new `/report` endpoint.
-- Polish pass: loading states, error states, empty states — these get skipped in mock-driven dev and are the first thing that breaks demo credibility.
-
----
-
-## 4. PHASE 3 — Hardening, Testing, and Launch (Week 3)
-
-Goal: this is a genuinely working, demo-able, defensible end-to-end product — not just a happy-path click-through.
-
-### 4.1 The five end-to-end flows from the audit doc — assign an owner to verify each, but test with all 3 present
-
-| Flow | Primary owner for fixing bugs | 
-|---|---|
-| Ingestion flow (upload → MinIO → Postgres → Celery task) | Barath |
-| Analysis flow (LangGraph → correct agent routing → Neo4j writes) | Tino |
-| Intelligence flow (Case Synthesis agent → valid Lead with risk score) | Tino + Barath |
-| Review flow (login → see lead → view graph → confirm) | Chinnaya |
-| Reporting flow (generate + download sourced PDF) | Barath + Chinnaya |
-
-Run each flow with **at least 3 different sample evidence files per modality** (image, audio, text/chat log) — not just the one sample file everyone got comfortable debugging against in Phase 1/2. Different file → different bugs, every time.
-
-### 4.2 Observability pass (Barath, with input from Tino on what metrics matter)
-
-- Wire up Prometheus + Grafana per the architecture doc's Section 8 — at minimum, get the ingest throughput panel and the agent error-rate panel live before demo day. A dashboard that shows *real* numbers (even small/boring ones from your own test runs) is far more convincing in a demo than a slide claiming performance numbers.
-- Set up basic Alertmanager rules for hash-verification failure and pipeline stalls — even just logging to console for a hackathon demo is fine, the point is showing the architecture is real.
-
-### 4.3 Security/chain-of-custody verification (Barath)
-
-- Manually attempt to `UPDATE` a row in `chain_of_custody_log` as the app's DB user and confirm it's rejected — this is a two-minute test that proves your most important architectural claim actually holds.
-- Confirm a rejected lead never appears as "confirmed" anywhere in the UI or DB.
-
-### 4.4 Demo readiness (Chinnaya leads, all 3 contribute)
-
-- Prepare **2–3 pre-loaded demo cases** with realistic (synthetic, not real casework — see note below) sample evidence, so the live demo doesn't depend on live GPU inference speed under pressure.
-- Have a **fallback recorded walkthrough** of the full flow in case live Ollama inference is slow or the venue Wi-Fi/hardware has issues — this is standard practice for any GPU-dependent live demo, not a lack of confidence in the system.
-- Rehearse the "what's real vs. what's a target metric" framing from the architecture doc's opening note — for a project in this domain, being precise about what's actually validated versus what's a design target is a strength in front of judges, not a weakness.
-
-> **Important reminder carried over from the architecture document:** all sample/demo evidence used for testing and the live demo must be synthetic/fabricated test data your team creates, never real case material of any kind. This project's entire premise is safe, authorized handling of sensitive evidence — the demo data should reflect that same discipline.
-
-### 4.5 Final merge to `main`
-
-- Each person opens a final PR from their branch.
-- Merge order that minimizes conflicts: **Barath's branch first** (it's the foundation everyone else's contract depends on) → **Tino's branch** (adds the pipeline logic on top) → **Chinnaya's branch** (frontend, least likely to conflict with backend/AI code).
-- After each merge, `docker compose up` from a clean clone and re-run the 5 end-to-end flows — a merge isn't "done" until the full stack boots clean from scratch on a machine that isn't yours.
-
----
-
-## 5. Quick-reference: who to bug when something's broken
-
-| Symptom | Talk to |
-|---|---|
-| Docker won't boot / networking issues between containers | Barath |
-| A lead never gets generated / agent silently fails | Tino |
-| Model download stuck / GPU out of memory / inference too slow | Tino |
-| Login broken / wrong role permissions | Barath |
-| UI shows stale/wrong data despite backend looking right | Chinnaya (check the API contract shape hasn't drifted) |
-| Graph explorer blank or frozen | Chinnaya (rendering) or Tino (if the underlying Neo4j data itself is wrong) |
-| PDF report missing or malformed | Barath (endpoint) or Chinnaya (download wiring) |
-
----
-
-## 6. Summary timeline
-
-```
-Day 0        : Fix Docker together, lock CONTRACTS.md together
-Week 1        : Each person builds their track independently against mocks/stubs
-Week 2 early : Checkpoint A — frontend ↔ backend real connection
-Week 2 mid   : Checkpoint B — backend ↔ AI pipeline real connection
-Week 2 late  : Checkpoint C — full loop working end-to-end
-Week 3        : Hardening, multi-file testing, observability, security checks, demo prep
-Week 3 end   : Final merge order (Barath → Tino → Chinnaya), clean-clone verification
-```
-
-*End of document.*
+| Frontend says "Network Error" or "CORS" | Barath | Update FastAPI `CORSMiddleware` to allow `*` or Chinnaya's IP. |
+| Keycloak Login Fails | Barath | Ensure the Realm was imported correctly and `acpia_token` is being set. |
+| AI Pipeline crashes with "JSON Decode Error" | Tino | The LLM hallucinated text outside the JSON block. Add strict JSON formatting instructions to the prompt, or use regex to extract `{...}`. |
+| File Upload Hangs at 99% | Barath & Chinnaya | Chinnaya checks Network tab for 500 error. Barath checks FastAPI logs for MinIO connection issues. |
+| Cytoscape Graph is blank | Chinnaya & Tino | Tino verifies Neo4j actually has data. Chinnaya checks if the API returned an empty array `[]`. |
