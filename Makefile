@@ -15,9 +15,10 @@ up: ## Start Postgres + Ollama (docker compose)
 	@cp -n .env.example .env 2>/dev/null || true
 	docker compose up -d
 	@echo "$(GREEN)Postgres (47800) and Ollama (47801) are up.$(RESET)"
-	@echo "Now run: make backend   (in one terminal)"
-	@echo "         make seal      (in another)"
-	@echo "         make console   (in another)"
+	@echo "Now run: ./start_all.sh  (or make start)"
+
+start: ## Complete setup and run all components (DB, Backend, Frontends)
+	./start_all.sh
 
 down: ## Stop Postgres + Ollama
 	docker compose down
