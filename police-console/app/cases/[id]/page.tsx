@@ -530,7 +530,7 @@ export default function CaseWorkspace({ params }: { params: { id: string } }) {
                         {complainantEvidence.length === 0 || respondentEvidence.length === 0
                           ? "Waiting for both parties to submit evidence."
                           : (() => {
-                              const matches = [...complainantHashes].filter((h) => respondentHashes.has(h)).length;
+                              const matches = Array.from(complainantHashes).filter((h) => respondentHashes.has(h as string)).length;
                               return matches > 0
                                 ? `${matches} file(s) share the same SHA-256 hash — these files are cryptographically identical and may represent shared evidence or tampered copies.`
                                 : "No matching hashes found — both sides submitted unique files. Download the Case Report PDF for the full forensic analysis.";
