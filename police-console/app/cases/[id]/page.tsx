@@ -8,8 +8,8 @@ import { PairPanel } from "../../components/PairPanel";
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:47802";
-const WS_API = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:47802";
+const API = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? `http://${window.location.hostname}:47802` : "http://localhost:47802");
+const WS_API = process.env.NEXT_PUBLIC_WS_URL || (typeof window !== "undefined" ? `ws://${window.location.hostname}:47802` : "ws://localhost:47802");
 
 export default function CaseWorkspace({ params }: { params: { id: string } }) {
   const router = useRouter();
