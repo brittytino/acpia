@@ -51,27 +51,14 @@ function PreserveContent() {
   const params = useSearchParams();
   const path = params.get("path") || "guardian";
   const [selectedPlatform, setSelectedPlatform] = useState<string>("WhatsApp");
-  const [file, setFile] = useState<File | null>(null);
-  const [dragOver, setDragOver] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
   const platform = PLATFORM_TIPS.find((p) => p.name === selectedPlatform) || PLATFORM_TIPS[0];
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    const f = e.dataTransfer.files[0];
-    if (f) setFile(f);
+  const handleContinue = () => {
+    sessionStorage.setItem("seal_path", path);
+    router.push(`/seal?path=${path}`);
   };
 
-  const handleContinue = () => {
-    if (file) {
-      sessionStorage.setItem("seal_filename", file.name);
-      sessionStorage.setItem("seal_size", String(file.size));
-      sessionStorage.setItem("seal_path", path);
-      router.push(`/seal?path=${path}&filename=${encodeURIComponent(file.name)}`);
-    }
-  };
+
 
   return (
     <GovLayout>
@@ -149,64 +136,12 @@ function PreserveContent() {
             </ol>
           </div>
 
-          {/* File Dropzone */}
-          <div
-            id="file-dropzone"
-            onDrop={handleDrop}
-            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-            onDragLeave={() => setDragOver(false)}
-            onClick={() => inputRef.current?.click()}
-            style={{
-              border: `2px dashed ${dragOver || file ? "var(--secondary)" : "var(--gray-300)"}`,
-              borderRadius: "var(--radius-md)",
-              padding: "36px 20px",
-              textAlign: "center",
-              cursor: "pointer",
-              background: dragOver || file ? "var(--secondary-light)" : "var(--white)",
-              marginBottom: "20px",
-              transition: "all 0.15s ease",
-            }}
-          >
-            <input
-              ref={inputRef}
-              type="file"
-              style={{ display: "none" }}
-              onChange={(e) => e.target.files?.[0] && setFile(e.target.files[0])}
-            />
-            {file ? (
-              <div>
-                <div style={{ fontSize: "2rem", marginBottom: "8px" }}>📄</div>
-                <div style={{ fontWeight: 700, color: "var(--primary)", fontSize: "1rem" }}>{file.name}</div>
-                <div style={{ fontSize: "0.8125rem", color: "var(--gray-600)", marginTop: "4px" }}>
-                  {(file.size / 1024).toFixed(1)} KB &bull; Ready for digital fingerprinting
-                </div>
-              </div>
-            ) : (
-              <div>
-                <div style={{ fontSize: "2rem", marginBottom: "8px" }}>📁</div>
-                <div style={{ fontWeight: 700, color: "var(--gray-900)", fontSize: "1rem", marginBottom: "4px" }}>
-                  Click to select file or drop file here
-                </div>
-                <div style={{ fontSize: "0.8125rem", color: "var(--gray-600)" }}>
-                  Supports screenshots, exported chats (.txt, .json, .zip), audio, and video files
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="alert alert-info" style={{ marginBottom: "24px" }}>
-            <strong>Local Processing Privacy Guarantee:</strong>
-            <br />
-            This file stays in your local browser memory. No file content will be uploaded or transmitted across the network during digital fingerprinting.
-          </div>
-
           <button
             id="continue-btn"
             className="btn btn-primary btn-block btn-lg"
-            disabled={!file}
             onClick={handleContinue}
           >
-            {file ? "Continue to Digital Fingerprint →" : "Select a File to Continue"}
+            Continue to Digital Fingerprint →
           </button>
         </div>
       </div>

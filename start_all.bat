@@ -34,10 +34,10 @@ if %errorlevel% neq 0 (
 :: STEP 2: Configure Environment Variables
 :: ------------------------------------------------------------------------------
 echo [2/3] Configuring Environment...
-if not exist "backend\.env" (
-    if exist "backend\.env.example" (
-        copy backend\.env.example backend\.env >nul
-        echo [OK] Created backend\.env from template.
+if not exist ".env" (
+    if exist ".env.example" (
+        copy .env.example .env >nul
+        echo [OK] Created .env from template.
     )
 )
 

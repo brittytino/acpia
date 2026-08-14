@@ -71,10 +71,10 @@ echo -e "${GREEN}✔ System Tech Stack Ready: Docker.${RESET}"
 # STEP 2: Configure Environment Variables
 # ------------------------------------------------------------------------------
 echo -e "${YELLOW}[2/3] Configuring Environment...${RESET}"
-if [ ! -f "backend/.env" ]; then
-    if [ -f "backend/.env.example" ]; then
-        cp backend/.env.example backend/.env
-        echo -e "${GREEN}✔ Created backend/.env from template.${RESET}"
+if [ ! -f ".env" ]; then
+    if [ -f ".env.example" ]; then
+        cp .env.example .env
+        echo -e "${GREEN}✔ Created .env from template.${RESET}"
     fi
 fi
 

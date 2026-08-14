@@ -168,9 +168,9 @@ async def create_sealed_report(body: SealReportCreate, db: AsyncSession = Depend
                     seal_url=settings.SEAL_URL,
                 ))
 
-    # Fire all emails in the background without blocking the response
+    # Ensure all emails are sent successfully before returning the response
     if tasks:
-        asyncio.create_task(_fire_emails(tasks))
+        await asyncio.gather(*tasks)
 
     return {
         "reference": reference,
@@ -179,16 +179,6 @@ async def create_sealed_report(body: SealReportCreate, db: AsyncSession = Depend
         "complainant_code": complainant_code,
         "respondent_code": respondent_code,
     }
-
-
-async def _fire_emails(tasks):
-    """Run all email coroutines concurrently, silently catching errors."""
-    import logging
-    log = logging.getLogger("veritas.email")
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-    for r in results:
-        if isinstance(r, Exception):
-            log.warning(f"Email task error: {r}")
 
 
 @router.get("/reports/{reference}/certificate")
