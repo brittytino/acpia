@@ -39,36 +39,36 @@ export default function InboundList() {
 
       <div style={{ padding: "0 2rem" }}>
 
-      {loading ? (
-        <p style={{ color: "var(--text-faint)" }}>Loading reports...</p>
-      ) : inbound.length === 0 ? (
-        <div className="premium-glass-card" style={{ textAlign: "center", padding: "4rem 1rem" }}>
-          <span style={{ fontSize: "2rem", marginBottom: "1rem", display: "block", color: "var(--text-faint)" }}>📥</span>
-          <p style={{ color: "var(--text-dim)", fontSize: "1.1rem" }}>No inbound reports pending.</p>
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "1rem", paddingBottom: "2rem" }}>
-          {inbound.map((r) => (
-            <Link key={r.reference} href={`/inbound/${r.reference}`} style={{ textDecoration: "none", color: "inherit" }}>
-              <div className="premium-glass-card" style={{ display: "flex", alignItems: "center", gap: "1.5rem", padding: "1.5rem", transition: "border 0.2s, transform 0.2s", borderLeft: "4px solid var(--steel)" }} onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"} onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}>
-                <div style={{ minWidth: "160px" }}>
-                  <div className="mono" style={{ color: "var(--steel)", fontSize: "1.05rem", fontWeight: 600, marginBottom: "0.25rem" }}>{r.reference}</div>
-                  <div style={{ fontSize: "0.75rem", color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>Sealed {new Date(r.sealed_at).toLocaleDateString()}</div>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, color: "var(--ink)", fontSize: "1.15rem", marginBottom: "0.25rem" }}>Path: {r.path_taken.replace('_', ' ')}</div>
-                  <div style={{ fontSize: "0.85rem", color: "var(--ink-soft)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                    <span>📎</span> Awaiting verification
+        {loading ? (
+          <p style={{ color: "var(--text-faint)" }}>Loading reports...</p>
+        ) : inbound.length === 0 ? (
+          <div className="premium-glass-card" style={{ textAlign: "center", padding: "4rem 1rem" }}>
+            <span style={{ fontSize: "2rem", marginBottom: "1rem", display: "block", color: "var(--text-faint)" }}>📥</span>
+            <p style={{ color: "var(--text-dim)", fontSize: "1.1rem" }}>No inbound reports pending.</p>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "1rem", paddingBottom: "2rem" }}>
+            {inbound.map((r) => (
+              <Link key={r.reference} href={`/inbound/${r.reference}`} style={{ textDecoration: "none", color: "inherit" }}>
+                <div className="premium-glass-card" style={{ display: "flex", alignItems: "center", gap: "1.5rem", padding: "1.5rem", transition: "border 0.2s, transform 0.2s", borderLeft: "4px solid var(--steel)" }} onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"} onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}>
+                  <div style={{ minWidth: "160px" }}>
+                    <div className="mono" style={{ color: "var(--steel)", fontSize: "1.05rem", fontWeight: 600, marginBottom: "0.25rem" }}>{r.reference}</div>
+                    <div style={{ fontSize: "0.75rem", color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>Sealed {new Date(r.sealed_at).toLocaleDateString()}</div>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, color: "var(--ink)", fontSize: "1.15rem", marginBottom: "0.25rem" }}>Path: {r.path_taken.replace('_', ' ')}</div>
+                    <div style={{ fontSize: "0.85rem", color: "var(--ink-soft)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      <span>📎</span> Awaiting verification
+                    </div>
+                  </div>
+                  <div>
+                    <span style={{ border: "1px solid rgba(29, 89, 86, 0.3)", color: "var(--steel)", fontSize: "0.75rem", padding: "0.3rem 0.8rem", borderRadius: "100px", fontWeight: 600, display: "inline-block" }}>→ REVIEW</span>
                   </div>
                 </div>
-                <div>
-                  <span style={{ border: "1px solid rgba(29, 89, 86, 0.3)", color: "var(--steel)", fontSize: "0.75rem", padding: "0.3rem 0.8rem", borderRadius: "100px", fontWeight: 600, display: "inline-block" }}>→ REVIEW</span>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     </Shell>
   );

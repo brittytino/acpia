@@ -36,7 +36,7 @@ export default function InboundDetail({ params }: { params: { ref: string } }) {
       const token = localStorage.getItem("acpia_token");
       const res = await fetch(`${API}/api/v1/inbound/${params.ref}/accept`, {
         method: "POST",
-        headers: { 
+        headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json"
         },
@@ -92,7 +92,7 @@ export default function InboundDetail({ params }: { params: { ref: string } }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
           <h3 style={{ fontSize: "1.25rem", color: "var(--ink)", fontWeight: 600 }}>Sealed Artifacts ({report.artifacts.length})</h3>
         </div>
-        
+
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "3rem" }}>
           {report.artifacts.map((art: any, i: number) => (
             <div key={i} className="premium-glass-card" style={{ padding: "1.5rem" }}>
