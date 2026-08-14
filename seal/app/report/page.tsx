@@ -64,7 +64,7 @@ function ReportContent() {
 
   const prewrittenText = `I am reporting an incident involving a child online.
 
-I have sealed digital evidence using ACPIA (Agentic Child Protection Intelligence Architecture).
+I have sealed digital evidence using VERITAS.
 
 My reference code is: ${reference}
 

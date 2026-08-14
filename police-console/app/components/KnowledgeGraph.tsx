@@ -85,7 +85,7 @@ export function KnowledgeGraph({ graphData }: { graphData: { nodes: any[]; edges
         rankDir: "TB",
         spacingFactor: 1.2,
         animate: true,
-      }
+      } as any
     });
 
     // Add interactivity

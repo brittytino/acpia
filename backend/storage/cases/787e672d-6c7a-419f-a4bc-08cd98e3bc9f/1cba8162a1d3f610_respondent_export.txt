@@ -1,0 +1,4 @@
+[01/08/2026, 09:00] him: morning
+[01/08/2026, 09:05] her: hi
+[02/08/2026, 10:00] him: how are you
+[02/08/2026, 10:10] her: fine thanks

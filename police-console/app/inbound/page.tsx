@@ -3,7 +3,7 @@ import { Shell } from "../components/Shell";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8765";
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:47802";
 
 export default function InboundList() {
   const [inbound, setInbound] = useState<any[]>([]);
@@ -27,7 +27,7 @@ export default function InboundList() {
   }, []);
 
   return (
-    <Shell title="ACPIA CONSOLE — Inbound Reports">
+    <Shell title="VERITAS CONSOLE — Inbound Reports">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "2.5rem", padding: "2rem 2rem 1.5rem", borderBottom: "1px solid var(--rule)" }}>
         <div>
           <h1 style={{ fontSize: "2rem", fontFamily: "'IBM Plex Sans', sans-serif", color: "var(--ink)", marginBottom: "0.25rem", letterSpacing: "-0.02em" }}>Inbound Citizen Reports</h1>

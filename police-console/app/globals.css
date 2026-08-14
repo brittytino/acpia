@@ -20,7 +20,14 @@
   --rejected:   #9E3935;   /* terracotta/warning */
   --rejected-bg:rgba(158, 57, 53, 0.08);
   --integrity:  #9E3935;   /* deep alarm red */
-  
+
+  /* Aliases used throughout components — kept in sync with seal/app/globals.css */
+  --ink:        #0B1B36;   /* midnight navy — primary text */
+  --ink-soft:   #3B4E68;   /* secondary text */
+  --ink-faint:  #879CB1;   /* disabled, metadata */
+  --card:       #FFFFFF;   /* panel background */
+  --calm:       #1D5956;   /* sage green accent */
+
   /* High-end Depth */
   --shadow-sm:  0 2px 8px rgba(11, 27, 54, 0.04), 0 1px 2px rgba(11, 27, 54, 0.02);
   --shadow-md:  0 8px 24px rgba(11, 27, 54, 0.06), 0 4px 8px rgba(11, 27, 54, 0.03);

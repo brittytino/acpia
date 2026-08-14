@@ -17,7 +17,12 @@ class SealedReport(Base):
     statement: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     contact: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     sealed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    claimed_by: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("cases.id"), nullable=True)
+    claimed_when: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # when the submitter says the underlying event occurred — distinct from
+    # sealed_at (when they sealed it). A large gap feeds the Authenticity Agent.
+    claimed_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        ForeignKey("cases.id", ondelete="SET NULL"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

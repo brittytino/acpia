@@ -26,6 +26,7 @@ class CaseOut(BaseModel):
     reference: str
     title: str
     status: str
+    case_type: str = "guard"
     created_at: datetime
     evidence_count: int = 0
     leads_pending: int = 0
@@ -49,7 +50,7 @@ async def list_cases(
         )).scalar() or 0
         output.append(CaseOut(
             id=c.id, reference=c.reference, title=c.title,
-            status=c.status, created_at=c.created_at,
+            status=c.status, case_type=c.case_type, created_at=c.created_at,
             evidence_count=ev_count, leads_pending=leads_pending,
         ))
     return output
@@ -72,7 +73,7 @@ async def create_case(
     await db.commit()
     await db.refresh(case)
     return CaseOut(id=case.id, reference=case.reference, title=case.title,
-                   status=case.status, created_at=case.created_at)
+                   status=case.status, case_type=case.case_type, created_at=case.created_at)
 
 
 @router.get("/{case_id}", response_model=CaseOut)
@@ -94,5 +95,5 @@ async def get_case(
     )).scalar() or 0
 
     return CaseOut(id=case.id, reference=case.reference, title=case.title,
-                   status=case.status, created_at=case.created_at,
+                   status=case.status, case_type=case.case_type, created_at=case.created_at,
                    evidence_count=ev_count, leads_pending=leads_pending)

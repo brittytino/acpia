@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-export function Shell({ children, title = "ACPIA CONSOLE" }: { children: React.ReactNode; title?: string }) {
+export function Shell({ children, title = "VERITAS CONSOLE" }: { children: React.ReactNode; title?: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<{ username: string; role: string } | null>(null);
@@ -63,6 +63,11 @@ export function Shell({ children, title = "ACPIA CONSOLE" }: { children: React.R
         <div className="nav-section" style={{ color: "var(--text-faint)", fontWeight: 600, fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.05em", padding: "0 1.25rem", marginBottom: "0.5rem", marginTop: "1.5rem" }}>Investigation</div>
         <Link href="/cases" className={`nav-item ${pathname.startsWith("/cases") ? "active" : ""}`}>
           ◫ Active Cases
+        </Link>
+
+        <div className="nav-section" style={{ color: "var(--text-faint)", fontWeight: 600, fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.05em", padding: "0 1.25rem", marginBottom: "0.5rem", marginTop: "1.5rem" }}>Oversight</div>
+        <Link href="/auditor" className={`nav-item ${pathname.startsWith("/auditor") ? "active" : ""}`}>
+          ◎ Auditor
         </Link>
       </aside>
 

@@ -27,6 +27,13 @@ export default function LandingPage() {
     },
   ];
 
+  const disputeCard = {
+    id: "dispute",
+    title: "I have a code — a complaint or dispute involves me",
+    desc: "You received a code by SMS, email, or letter, as either party to a case.",
+    icon: "⚖️",
+  };
+
   return (
     <main className="layout-split fade-in">
       {/* LEFT: Anchor Image Placeholder */}
@@ -37,7 +44,7 @@ export default function LandingPage() {
             Your report can protect<br/>a child and prevent harm.
           </h2>
           <p style={{ fontSize: "1.1rem", opacity: 0.9, maxWidth: "400px", marginBottom: "3rem" }}>
-            ACPIA SEAL helps you securely report concerns and connect with the right authorities.
+            VERITAS SEAL helps you securely report concerns and connect with the right authorities.
           </p>
           
           <div style={{ display: "flex", gap: "2rem", marginBottom: "3rem" }}>
@@ -62,7 +69,7 @@ export default function LandingPage() {
           </div>
           
           <div style={{ fontSize: "0.85rem", opacity: 0.7, borderTop: "1px solid rgba(255,255,255,0.2)", paddingTop: "1.5rem" }}>
-            🛡️ ACPIA SEAL is a non-emergency reporting system.<br/>
+            🛡️ VERITAS SEAL is a non-emergency reporting system.<br/>
             If a child is in immediate danger, call 1098 or 112.
           </div>
         </div>
@@ -131,6 +138,26 @@ export default function LandingPage() {
                 <span style={{ color: "var(--ink-soft)", fontSize: "1.5rem", opacity: 0.5 }}>→</span>
               </button>
             ))}
+
+            <button
+              id="path-dispute"
+              className="card card-interactive"
+              onClick={() => router.push("/dispute")}
+              style={{
+                display: "flex", alignItems: "center", gap: "1.5rem", textAlign: "left",
+                width: "100%", border: "1px dashed var(--rule)", padding: "1.25rem 2rem",
+                background: "rgba(11,27,54,0.02)",
+              }}
+            >
+              <div style={{ width: "48px", height: "48px", borderRadius: "50%", background: "var(--card)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.3rem", boxShadow: "var(--shadow-sm)", border: "1px solid var(--rule)" }}>
+                {disputeCard.icon}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: "1rem", color: "var(--ink)", marginBottom: "0.2rem" }}>{disputeCard.title}</div>
+                <div style={{ fontSize: "0.85rem", color: "var(--ink-soft)" }}>{disputeCard.desc}</div>
+              </div>
+              <span style={{ color: "var(--ink-soft)", fontSize: "1.3rem", opacity: 0.5 }}>→</span>
+            </button>
           </div>
 
           <div style={{ textAlign: "center", borderTop: "1px solid var(--rule)", paddingTop: "2rem" }}>

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8765";
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:47802";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -43,7 +43,7 @@ export default function Dashboard() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "2rem", padding: "2rem 2rem 0" }}>
         <div>
           <h1 style={{ fontSize: "2rem", fontFamily: "'IBM Plex Sans', sans-serif", color: "var(--ink)", marginBottom: "0.25rem", letterSpacing: "-0.02em" }}>Intelligence Dashboard</h1>
-          <p style={{ color: "var(--ink-soft)", fontSize: "0.95rem" }}>System status: <span style={{ color: "var(--verified)", fontWeight: 600 }}>● Secure</span> &middot; ACPIA Forensic Workstation</p>
+          <p style={{ color: "var(--ink-soft)", fontSize: "0.95rem" }}>System status: <span style={{ color: "var(--verified)", fontWeight: 600 }}>● Secure</span> &middot; VERITAS Forensic Workstation</p>
         </div>
       </div>
       

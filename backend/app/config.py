@@ -18,8 +18,19 @@ class Settings(BaseSettings):
     STORAGE_PATH: str = "./storage"
 
     # ── Database (Postgres + pgvector only) ──────────────
+    # DATABASE_URL — the table-owning role. Used only for DDL: migrations
+    # and initial table/role provisioning at startup.
     DATABASE_URL: str = "postgresql+asyncpg://acpia:password@localhost:47800/acpia"
     DATABASE_URL_SYNC: str = "postgresql://acpia:password@localhost:47800/acpia"
+
+    # DATABASE_URL_APP — the least-privilege runtime role every request
+    # actually connects as (VERITAS §6.2). It is granted broad DML but has
+    # UPDATE/DELETE explicitly revoked on custody_log — enforced by
+    # Postgres itself, not by application code, and not bypassable by an
+    # owner-privilege loophole because this role never owns the table.
+    DATABASE_URL_APP: str = "postgresql+asyncpg://veritas_app:veritas_app_dev_pw@localhost:47800/acpia"
+    DB_APP_ROLE: str = "veritas_app"
+    DB_APP_PASSWORD: str = "veritas_app_dev_pw"
 
     # ── Ollama — three small resident models ─────────────
     OLLAMA_BASE_URL: str = "http://localhost:47801"
@@ -38,6 +49,10 @@ class Settings(BaseSettings):
         "http://127.0.0.1:47803",
         "http://127.0.0.1:47804",
     ]
+
+    # ── VERITAS frontends (QR pairing / dispute links) ────
+    SEAL_URL: str = "http://localhost:47803"
+    CONSOLE_URL: str = "http://localhost:47804"
 
     class Config:
         env_file = ".env"

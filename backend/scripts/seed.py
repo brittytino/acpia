@@ -1,87 +1,56 @@
 """
-Database seed script for ACPIA.
-Ensures the initial admin and demo investigator users exist in the PostgreSQL DB,
-matching the users seeded in Keycloak via acpia-realm.json.
+Database seed script for VERITAS.
+Creates one demo user per role so every flow in the master plan is testable:
+investigator, supervisor, auditor, admin.
 """
 import sys
 import os
-import uuid
 import asyncio
-from datetime import datetime, timezone
-import structlog
+import logging
 
-# Add the parent directory to sys.path so we can import app modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.database import get_db
-from app.models.models import User
+from sqlalchemy import select
+from app.database import AsyncSessionLocal, create_tables
+from app.models.user import User
+from app.core.security import hash_password
 
-logger = structlog.get_logger(__name__)
+log = logging.getLogger("seed")
+logging.basicConfig(level=logging.INFO)
+
+USERS = [
+    {"username": "admin", "password": "password123", "role": "admin"},
+    {"username": "investigator1", "password": "password123", "role": "investigator"},
+    {"username": "supervisor1", "password": "password123", "role": "supervisor"},
+    {"username": "auditor1", "password": "password123", "role": "auditor"},
+]
+
 
 async def seed_users():
-    logger.info("Starting database seeding...")
-    
-    # We use next() on the generator to get the session
-    db_gen = get_db()
-    db = await anext(db_gen)
+    log.info("Ensuring tables + append-only role exist...")
+    await create_tables()
 
-    try:
-        # Keycloak users defined in infra/keycloak/acpia-realm.json:
-        # admin (admin@acpia.local)
-        # investigator1 (investigator1@acpia.local)
-
-        users_to_seed = [
-            {
-                "username": "admin",
-                "email": "admin@acpia.local",
-                "full_name": "System Admin",
-                "role": "admin",
-                # Hardcoded keycloak ID (in reality this would be synced via webhook)
-                "keycloak_id": "00000000-0000-0000-0000-000000000001",
-                "is_active": True,
-            },
-            {
-                "username": "investigator1",
-                "email": "investigator1@acpia.local",
-                "full_name": "Demo Investigator",
-                "role": "investigator",
-                "badge_number": "INV-001",
-                "jurisdiction": "Central Division",
-                "keycloak_id": "00000000-0000-0000-0000-000000000002",
-                "is_active": True,
-            }
-        ]
-
-        from sqlalchemy import select
-        for u_data in users_to_seed:
-            stmt = select(User).where(User.username == u_data["username"])
-            result = await db.execute(stmt)
-            existing_user = result.scalars().first()
-
-            if not existing_user:
-                new_user = User(**u_data)
-                db.add(new_user)
-                logger.info(f"Created user: {u_data['username']}")
-            else:
-                logger.info(f"User already exists: {u_data['username']}")
-
+    async with AsyncSessionLocal() as db:
+        for u in USERS:
+            existing = (await db.execute(
+                select(User).where(User.username == u["username"])
+            )).scalar_one_or_none()
+            if existing:
+                existing.password_hash = hash_password(u["password"])
+                existing.role = u["role"]
+                log.info(f"Reset password for existing user: {u['username']} ({u['role']})")
+                continue
+            db.add(User(
+                username=u["username"],
+                password_hash=hash_password(u["password"]),
+                role=u["role"],
+            ))
+            log.info(f"Created user: {u['username']} / {u['password']}  role={u['role']}")
         await db.commit()
-        
-        # Now enforce row-level security / revoking on chain_of_custody_log
-        # to ensure it's strictly append-only
-        await db.execute("REVOKE UPDATE, DELETE ON TABLE chain_of_custody_log FROM PUBLIC;")
-        await db.execute("REVOKE UPDATE, DELETE ON TABLE chain_of_custody_log FROM acpia_user;")
-        await db.commit()
-        logger.info("Enforced append-only constraints on chain_of_custody_log.")
-        
-        logger.info("Database seeding completed successfully.")
 
-    except Exception as e:
-        logger.error(f"Seeding failed: {str(e)}")
-        await db.rollback()
-        raise
-    finally:
-        await db.close()
+    log.info("Seeding complete.")
+    log.info("Login with any of: " + ", ".join(f"{u['username']}/{u['password']}" for u in USERS))
+
 
 if __name__ == "__main__":
     asyncio.run(seed_users())

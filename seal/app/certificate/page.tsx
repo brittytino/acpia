@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, Suspense } from "react";
 import { formatHash, formatSize } from "@/lib/seal";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8765";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:47802";
 
 function CertificateContent() {
   const router = useRouter();

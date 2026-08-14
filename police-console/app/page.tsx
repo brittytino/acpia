@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8765";
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:47802";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -40,11 +40,11 @@ export default function LoginPage() {
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
           <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "0.75rem", color: "var(--steel)", marginBottom: "0.5rem", letterSpacing: "0.12em", fontWeight: 600 }}>
-            ACPIA CONSOLE
+            VERITAS CONSOLE
           </div>
-          <h1 style={{ fontSize: "1.5rem", color: "var(--ink)", marginBottom: "0.25rem" }}>Agentic Child Protection</h1>
+          <h1 style={{ fontSize: "1.5rem", color: "var(--ink)", marginBottom: "0.25rem" }}>Evidence you can trust.</h1>
           <p style={{ color: "var(--ink-soft)", fontSize: "0.875rem", marginTop: "0.25rem" }}>
-            Intelligence Architecture v3
+            Investigation you can defend.
           </p>
         </div>
 
@@ -89,8 +89,10 @@ export default function LoginPage() {
         <div style={{ marginTop: "2rem", textAlign: "center" }}>
           <div style={{ background: "var(--verified-bg)", border: "1px solid rgba(29, 89, 86, 0.2)", borderRadius: "var(--radius-sm)", padding: "1rem", marginBottom: "1.5rem", fontSize: "0.8rem", color: "var(--ink)", textAlign: "left" }}>
             <div style={{ fontWeight: 600, marginBottom: "0.5rem", color: "var(--ink)" }}>🔑 Demo Login Credentials:</div>
-            <div style={{ marginBottom: "0.25rem" }}>• Username: <code style={{ color: "var(--steel)", fontWeight: 600, background: "rgba(255,255,255,0.5)", padding: "2px 4px", borderRadius: "4px" }}>investigator</code></div>
-            <div>• Password: <code style={{ color: "var(--steel)", fontWeight: 600, background: "rgba(255,255,255,0.5)", padding: "2px 4px", borderRadius: "4px" }}>password123</code></div>
+            <div style={{ marginBottom: "0.25rem" }}>• Investigator: <code style={{ color: "var(--steel)", fontWeight: 600, background: "rgba(255,255,255,0.5)", padding: "2px 4px", borderRadius: "4px" }}>investigator1</code></div>
+            <div style={{ marginBottom: "0.25rem" }}>• Supervisor: <code style={{ color: "var(--steel)", fontWeight: 600, background: "rgba(255,255,255,0.5)", padding: "2px 4px", borderRadius: "4px" }}>supervisor1</code></div>
+            <div style={{ marginBottom: "0.25rem" }}>• Auditor: <code style={{ color: "var(--steel)", fontWeight: 600, background: "rgba(255,255,255,0.5)", padding: "2px 4px", borderRadius: "4px" }}>auditor1</code></div>
+            <div>• Password (all): <code style={{ color: "var(--steel)", fontWeight: 600, background: "rgba(255,255,255,0.5)", padding: "2px 4px", borderRadius: "4px" }}>password123</code></div>
           </div>
           <p style={{ fontSize: "0.75rem", color: "var(--text-faint)" }}>
             Authorised law enforcement only. All access is logged.

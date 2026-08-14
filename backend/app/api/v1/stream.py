@@ -6,7 +6,9 @@ from sqlalchemy import select
 
 from app.database import get_db
 from app.core.events import bus
+from app.core.security import get_current_user
 from app.models.case import Case
+from app.models.user import User
 from app.pipeline import run_pipeline
 
 router = APIRouter(tags=["Stream"])
@@ -18,12 +20,11 @@ async def stream_case(case_id: str, websocket: WebSocket):
     await bus.subscribe(case_id, websocket)
     try:
         while True:
-            # Keep alive — ping/pong
             data = await websocket.receive_text()
             if data == "ping":
                 await websocket.send_text("pong")
     except WebSocketDisconnect:
-        bus.unsubscribe(case_id, websocket)
+        await bus.unsubscribe(case_id, websocket)
 
 
 @router.post("/cases/{case_id}/analyze")
@@ -31,6 +32,7 @@ async def start_pipeline(
     case_id: UUID,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Start the analysis pipeline as a background asyncio task."""
     result = await db.execute(select(Case).where(Case.id == case_id))
@@ -45,6 +47,7 @@ async def start_pipeline(
 async def get_conversations(
     case_id: UUID,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     from app.models.conversation import Conversation
     result = await db.execute(
@@ -56,10 +59,12 @@ async def get_conversations(
         "platform": c.platform,
         "participants": c.participants,
         "message_count": c.message_count,
-        "trajectory": float(c.trajectory) if c.trajectory else None,
-        "drift_ratio": float(c.drift_ratio) if c.drift_ratio else None,
+        "trajectory": float(c.trajectory) if c.trajectory is not None else None,
+        "drift_ratio": float(c.drift_ratio) if c.drift_ratio is not None else None,
         "first_at": c.first_at.isoformat() if c.first_at else None,
         "last_at": c.last_at.isoformat() if c.last_at else None,
+        "code_switch_delta": float(c.code_switch_delta) if c.code_switch_delta is not None else None,
+        "code_switch_direction": c.code_switch_direction,
     } for c in convos]
 
 
@@ -67,8 +72,11 @@ async def get_conversations(
 async def get_escalation_timeline(
     convo_id: UUID,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    """Escalation Timeline data — the signature feature."""
+    """Escalation Timeline data — the signature feature. Includes the
+    Tanglish language band (VERITAS §3.8): per-window Tamil share and the
+    code-switch drift callout, alongside the behavioural stage trajectory."""
     from app.models.conversation import Conversation, Message
     result = await db.execute(
         select(Conversation).where(Conversation.id == convo_id)
@@ -87,24 +95,36 @@ async def get_escalation_timeline(
         "conversation_id": str(convo_id),
         "participants": convo.participants,
         "message_count": convo.message_count or len(messages),
-        "trajectory": float(convo.trajectory) if convo.trajectory else None,
-        "drift_ratio": float(convo.drift_ratio) if convo.drift_ratio else None,
+        "trajectory": float(convo.trajectory) if convo.trajectory is not None else None,
+        "drift_ratio": float(convo.drift_ratio) if convo.drift_ratio is not None else None,
+        "code_switch": {
+            "slope": float(convo.code_switch_slope) if convo.code_switch_slope is not None else None,
+            "delta": float(convo.code_switch_delta) if convo.code_switch_delta is not None else None,
+            "direction": convo.code_switch_direction,
+            "windows": (convo.language_profile or {}).get("windows", []),
+            "confidence": (convo.language_profile or {}).get("confidence"),
+        },
         "messages": [{
             "idx": m.idx,
             "sender": m.sender,
             "sent_at": m.sent_at.isoformat(),
             "stage": m.stage,
-            "stage_conf": float(m.stage_conf) if m.stage_conf else None,
+            "stage_conf": float(m.stage_conf) if m.stage_conf is not None else None,
             "evidence_span": m.evidence_span,
+            "language": m.language,
+            "tamil_share": float(m.tamil_share) if m.tamil_share is not None else None,
         } for m in messages],
     }
 
 
 @router.get("/cases/{case_id}/graph")
-async def get_graph(case_id: UUID, db: AsyncSession = Depends(get_db)):
+async def get_graph(
+    case_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Cytoscape-shaped nodes + edges for the knowledge graph."""
     from app.models.graph import Node, Edge
-    from sqlalchemy import or_
 
     nodes_r = await db.execute(select(Node).where(Node.case_id == case_id))
     nodes = nodes_r.scalars().all()
@@ -126,7 +146,11 @@ async def get_graph(case_id: UUID, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/cases/{case_id}/impact")
-async def get_impact(case_id: UUID, db: AsyncSession = Depends(get_db)):
+async def get_impact(
+    case_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Live Impact Ledger counters."""
     from sqlalchemy import func
     from app.models.evidence import Evidence
@@ -137,11 +161,11 @@ async def get_impact(case_id: UUID, db: AsyncSession = Depends(get_db)):
     )).scalar() or 0
 
     processed = (await db.execute(
-        select(func.count(Evidence.id)).where(Evidence.case_id == case_id, Evidence.processed == True)
+        select(func.count(Evidence.id)).where(Evidence.case_id == case_id, Evidence.processed == True)  # noqa: E712
     )).scalar() or 0
 
     viewed = (await db.execute(
-        select(func.sum(Evidence.revealed_count)).where(Evidence.case_id == case_id)
+        select(func.count(Evidence.id)).where(Evidence.case_id == case_id, Evidence.revealed_count > 0)
     )).scalar() or 0
 
     leads_total = (await db.execute(
@@ -152,26 +176,30 @@ async def get_impact(case_id: UUID, db: AsyncSession = Depends(get_db)):
         select(func.count(Lead.id)).where(Lead.case_id == case_id, Lead.status == "confirmed")
     )).scalar() or 0
 
-    avoided = processed - viewed
-    pct = round((avoided / processed * 100) if processed > 0 else 0, 1)
+    avoided_pct = round((1 - viewed / processed) * 100, 1) if processed > 0 else 0.0
 
     return {
         "artifacts_total": total,
         "artifacts_processed": processed,
         "artifacts_viewed": viewed,
-        "exposure_avoided_pct": pct,
+        "exposure_avoided_pct": avoided_pct,
         "leads_pending": leads_total - leads_confirmed,
         "leads_confirmed": leads_confirmed,
+        "note": "Measured this session. Not a benchmark.",
     }
 
 
 @router.get("/cases/{case_id}/custody")
-async def get_custody_log(case_id: UUID, db: AsyncSession = Depends(get_db)):
-    """Full custody log."""
+async def get_custody_log(
+    case_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Full custody log, in chain order — what the Auditor view re-verifies."""
     from app.models.evidence import CustodyLog
     result = await db.execute(
         select(CustodyLog).where(CustodyLog.case_id == case_id)
-        .order_by(CustodyLog.at)
+        .order_by(CustodyLog.id)
     )
     entries = result.scalars().all()
     return [{
@@ -182,4 +210,6 @@ async def get_custody_log(case_id: UUID, db: AsyncSession = Depends(get_db)):
         "target_id": str(e.target_id) if e.target_id else None,
         "detail": e.detail,
         "at": e.at.isoformat(),
+        "prev_hash": e.prev_hash,
+        "entry_hash": e.entry_hash,
     } for e in entries]

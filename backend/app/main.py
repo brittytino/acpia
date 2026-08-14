@@ -1,7 +1,7 @@
 """
-ACPIA v3 — Main FastAPI application.
+VERITAS — Main FastAPI application.
+Evidence you can trust. Investigation you can defend.
 Three services: Postgres, Ollama, this app.
-Full cold boot in under a minute.
 """
 import logging
 from contextlib import asynccontextmanager
@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import create_tables
 
-log = logging.getLogger("acpia")
+log = logging.getLogger("veritas")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
 
@@ -38,32 +38,29 @@ async def _warm_models():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    log.info("ACPIA v3 starting — Postgres + Ollama + this app")
+    log.info("VERITAS starting — Postgres + Ollama + this app")
 
-    # Create DB tables
     try:
         await create_tables()
-        log.info("✅ Database ready")
+        log.info("✅ Database ready — tables created, append-only role provisioned")
     except Exception as e:
         log.error(f"❌ Database init failed: {e}")
 
-    # Create storage directory
     import os
     os.makedirs(settings.STORAGE_PATH, exist_ok=True)
 
-    # Warm models asynchronously so server starts immediately
     import asyncio
     asyncio.create_task(_warm_models())
 
-    log.info(f"✅ ACPIA ready on port {settings.BACKEND_PORT}")
+    log.info(f"✅ VERITAS ready on port {settings.BACKEND_PORT}")
     yield
-    log.info("ACPIA shutting down")
+    log.info("VERITAS shutting down")
 
 
 app = FastAPI(
-    title="ACPIA — Agentic Child Protection Intelligence Architecture",
-    description="v3 — From the first screenshot to the courtroom: one unbroken chain.",
-    version="3.0.0",
+    title="VERITAS — Evidence you can trust. Investigation you can defend.",
+    description="Truth coheres. Fabrication doesn't. We don't decide who's lying — we make lying visible.",
+    version="6.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,
@@ -71,7 +68,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS + ["*"],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -80,20 +77,20 @@ app.add_middleware(
 
 @app.get("/health", tags=["System"])
 async def health():
-    return {"status": "ok", "version": "3.0.0", "service": "acpia-backend"}
+    return {"status": "ok", "version": "6.0.0", "service": "veritas-backend"}
 
 
 @app.get("/", tags=["System"])
 async def root():
     return {
-        "service": "ACPIA v3",
-        "tagline": "From the first screenshot to the courtroom: one unbroken chain.",
+        "service": "VERITAS",
+        "tagline": "Evidence you can trust. Investigation you can defend.",
         "docs": "/docs",
     }
 
 
 # ── Register all routers ──────────────────────────────────────────────────────
-from app.api.v1 import auth, seal, inbound, cases, evidence, leads, stream, reports
+from app.api.v1 import auth, seal, inbound, cases, evidence, leads, stream, reports, veritas
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(seal.router, prefix="/api/v1")
@@ -103,5 +100,6 @@ app.include_router(evidence.router, prefix="/api/v1")
 app.include_router(leads.router, prefix="/api/v1")
 app.include_router(stream.router, prefix="/api/v1")
 app.include_router(reports.router, prefix="/api/v1")
+app.include_router(veritas.router, prefix="/api/v1")
 
-log.info("✅ All v3 routers registered")
+log.info("✅ All routers registered")
