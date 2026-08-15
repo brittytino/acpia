@@ -15,6 +15,18 @@ from sqlalchemy.orm import DeclarativeBase
 from app.config import settings
 
 _connect_args = {"ssl": "require"} if settings.DB_SSL_REQUIRE else {}
+# asyncpg uses server-side prepared statements by default, which break under
+# PgBouncer transaction-mode pooling (Neon's "-pooler" endpoint): the
+# statement gets prepared on one backend connection but PgBouncer may hand
+# a later request a *different* backend connection where that statement was
+# never prepared, or reuses the same statement name against a connection
+# that has moved on — surfacing as random "prepared statement ... does not
+# exist" / "already exists" errors under any concurrency. Disabling
+# asyncpg's client-side statement cache makes every connection safe to use
+# through a transaction pooler; it's a no-op (slightly less caching, no
+# correctness difference) against Neon's direct endpoint too, so this is
+# safe regardless of which of the two Neon connection strings is configured.
+_connect_args["statement_cache_size"] = 0
 
 owner_engine = create_async_engine(
     settings.DATABASE_URL,

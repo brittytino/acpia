@@ -23,20 +23,28 @@ async def lifespan(app: FastAPI):
 
     try:
         await create_tables()
-        log.info("✅ Database ready — tables created, append-only role provisioned")
+    except Exception:
+        # Table/role provisioning is load-bearing for every route — silently
+        # swallowing this would leave a service that reports /health=200
+        # while every DB-touching endpoint 500s. Fail the boot loudly so
+        # Render surfaces a failed deploy instead of a falsely-green one.
+        log.exception("❌ Database init failed — refusing to serve a broken deployment")
+        raise
+    log.info("✅ Database ready — tables created, append-only role provisioned")
 
-        # Auto-seed demo users — dev/staging convenience only. Never run this
-        # against a production database: it creates well-known credentials
-        # (see backend/scripts/seed.py) and resets them on every restart.
-        if settings.ENVIRONMENT == "production":
-            log.info("ENVIRONMENT=production — skipping demo user seeding")
-        else:
+    # Auto-seed demo users — dev/staging convenience only. Never run this
+    # against a production database: it creates well-known credentials
+    # (see backend/scripts/seed.py) and resets them on every restart.
+    if settings.ENVIRONMENT == "production":
+        log.info("ENVIRONMENT=production — skipping demo user seeding")
+    else:
+        try:
             sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             from scripts.seed import seed_users
             await seed_users()
             log.warning("⚠️  Seeded demo users with known passwords — dev/staging only, never production")
-    except Exception as e:
-        log.error(f"❌ Database init/seed failed: {e}")
+        except Exception as e:
+            log.error(f"❌ Demo user seeding failed: {e}")
 
     log.info(f"✅ VERITAS ready on port {settings.BACKEND_PORT}")
     yield

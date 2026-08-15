@@ -15,8 +15,8 @@ no SSH, no server to manage.**
 | `police-console` (Next.js) | **Vercel** (second project, same repo) | Same |
 | Postgres + pgvector | **Neon** | Serverless Postgres, free tier, pgvector built in, in GitHub Student Pack |
 | Evidence files | **Cloudinary** | Render's free tier has no persistent disk — anything written to local disk vanishes on every restart/redeploy. Evidence uploaded to a case goes to Cloudinary instead. (The seal app never uploads file bodies — only a hash+size — so it's unaffected.) |
-| AI — text + vision | **OpenRouter**, free models, 5-model fallback chain | Replaces Ollama. See `backend/app/agents/openrouter.py` |
-| AI — embeddings | **Google Gemini** (`text-embedding-004`), free tier | OpenRouter has no embeddings endpoint |
+| AI — text + vision | **OpenRouter**, free models, ordered fallback chain | Replaces Ollama. See `backend/app/agents/openrouter.py` |
+| AI — embeddings | **Google Gemini** (`gemini-embedding-001`), free tier | OpenRouter has no embeddings endpoint |
 
 Final URLs (adjust if you picked different subdomains):
 
@@ -105,16 +105,20 @@ configured for this. Render dashboard → New → Blueprint → pick this repo �
 Render reads `render.yaml` and creates the `acpia-backend` service. It will
 prompt you for every env var marked `sync: false` in that file — paste in:
 
+**Never paste real secrets into this file** — it's committed to a public
+repo. Fill these in directly in the Render dashboard's Environment tab
+instead. Reference only, not real values:
+
 | Env var | Value |
 |---|---|
 | `SECRET_KEY` | `openssl rand -base64 48` (or just mash your keyboard) |
-| `DATABASE_URL` | `postgresql+asyncpg://neondb_owner:npg_kpPxWy9UDX3o@ep-solitary-glade-ayvwuq1w-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require` |
-| `DATABASE_URL_SYNC` | `postgresql://neondb_owner:npg_kpPxWy9UDX3o@ep-solitary-glade-ayvwuq1w-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require` |
-| `DATABASE_URL_APP` | `postgresql+asyncpg://neondb_owner:npg_kpPxWy9UDX3o@ep-solitary-glade-ayvwuq1w-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require` |
-| `DB_APP_PASSWORD` | `npg_kpPxWy9UDX3o` |
-| `OPENROUTER_API_KEY` | `(Paste your OpenRouter sk-or... key here)` |
-| `GEMINI_API_KEY` | `(Paste your Gemini AQ... key here)` |
-| `CLOUDINARY_URL` | `cloudinary://537392247936717:OqKXTkTkiCDNSA05l8C5EtuVdQc@dekitmlm7` |
+| `DATABASE_URL` | Neon's **direct** (non-`-pooler`) connection string, owner role — `postgresql+asyncpg://<owner_user>:<password>@<direct-host>/<db>?sslmode=require&channel_binding=require` |
+| `DATABASE_URL_SYNC` | Same as above with the plain `postgresql://` scheme (no `+asyncpg`) |
+| `DATABASE_URL_APP` | Same host/database, but username `veritas_app` (`DB_APP_ROLE`) and a **freshly generated** password — NOT the owner's credentials. This role doesn't need to pre-exist in Neon; the app creates it on first boot using `DATABASE_URL`'s owner rights. |
+| `DB_APP_PASSWORD` | `openssl rand -base64 24` — must match the password used in `DATABASE_URL_APP` above |
+| `OPENROUTER_API_KEY` | Your OpenRouter `sk-or-...` key |
+| `GEMINI_API_KEY` | Your Google AI Studio key |
+| `CLOUDINARY_URL` | Your Cloudinary dashboard's `cloudinary://<api_key>:<api_secret>@<cloud_name>` string |
 
 Everything else (`CORS_ORIGINS`, `SEAL_URL`, `CONSOLE_URL`, `DB_SSL_REQUIRE`,
 etc.) is already set as a plain value in `render.yaml` — edit that file and

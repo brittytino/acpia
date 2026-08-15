@@ -32,7 +32,7 @@ async def _describe(image_bytes: bytes) -> str:
 
 
 async def _embed(text: str) -> Optional[list]:
-    """Embed text via Gemini's text-embedding-004."""
+    """Embed text via Gemini's gemini-embedding-001."""
     if not text.strip():
         return None
     return await embed_agent.embed(text[:2000])
