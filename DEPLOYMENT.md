@@ -112,7 +112,7 @@ instead. Reference only, not real values:
 | Env var | Value |
 |---|---|
 | `SECRET_KEY` | `openssl rand -base64 48` (or just mash your keyboard) |
-| `DATABASE_URL` | Neon's **direct** (non-`-pooler`) connection string, owner role — `postgresql+asyncpg://<owner_user>:<password>@<direct-host>/<db>?sslmode=require&channel_binding=require` |
+| `DATABASE_URL` | Neon's **direct** (non-`-pooler`) connection string, owner role — `postgresql+asyncpg://<owner_user>:<password>@<direct-host>/<db>` |
 | `DATABASE_URL_SYNC` | Same as above with the plain `postgresql://` scheme (no `+asyncpg`) |
 | `DATABASE_URL_APP` | Same host/database, but username `veritas_app` (`DB_APP_ROLE`) and a **freshly generated** password — NOT the owner's credentials. This role doesn't need to pre-exist in Neon; the app creates it on first boot using `DATABASE_URL`'s owner rights. |
 | `DB_APP_PASSWORD` | `openssl rand -base64 24` — must match the password used in `DATABASE_URL_APP` above |

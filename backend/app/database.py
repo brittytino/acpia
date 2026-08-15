@@ -95,7 +95,8 @@ async def _provision_app_role():
             escaped_pw = settings.DB_APP_PASSWORD.replace("'", "''")
             await conn.execute(text(f'CREATE ROLE "{role}" LOGIN PASSWORD \'{escaped_pw}\''))
 
-        await conn.execute(text(f'GRANT CONNECT ON DATABASE acpia TO "{role}"'))
+        db_name = owner_engine.url.database
+        await conn.execute(text(f'GRANT CONNECT ON DATABASE {db_name} TO "{role}"'))
         await conn.execute(text(f'GRANT USAGE ON SCHEMA public TO "{role}"'))
         await conn.execute(text(f'GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO "{role}"'))
         await conn.execute(text(f'GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO "{role}"'))
