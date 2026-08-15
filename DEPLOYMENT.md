@@ -108,9 +108,9 @@ prompt you for every env var marked `sync: false` in that file — paste in:
 | Env var | Value |
 |---|---|
 | `SECRET_KEY` | `openssl rand -base64 48` (or just mash your keyboard) |
-| `DATABASE_URL` | `postgresql://neondb_owner:npg_kpPxWy9UDX3o@ep-solitary-glade-ayvwuq1w-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require` |
+| `DATABASE_URL` | `postgresql+asyncpg://neondb_owner:npg_kpPxWy9UDX3o@ep-solitary-glade-ayvwuq1w-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require` |
 | `DATABASE_URL_SYNC` | `postgresql://neondb_owner:npg_kpPxWy9UDX3o@ep-solitary-glade-ayvwuq1w-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require` |
-| `DATABASE_URL_APP` | `postgresql://neondb_owner:npg_kpPxWy9UDX3o@ep-solitary-glade-ayvwuq1w-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require` |
+| `DATABASE_URL_APP` | `postgresql+asyncpg://neondb_owner:npg_kpPxWy9UDX3o@ep-solitary-glade-ayvwuq1w-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require` |
 | `DB_APP_PASSWORD` | `npg_kpPxWy9UDX3o` |
 | `OPENROUTER_API_KEY` | `(Paste your OpenRouter sk-or... key here)` |
 | `GEMINI_API_KEY` | `(Paste your Gemini AQ... key here)` |
