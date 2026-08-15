@@ -64,8 +64,8 @@ class Settings(BaseSettings):
     ]
 
     # ── VERITAS frontends (QR pairing / dispute links) ────
-    SEAL_URL: str = "http://localhost:48803"
-    CONSOLE_URL: str = "http://localhost:48804"
+    SEAL_URL: str = "http://192.168.11.209:48803"
+    CONSOLE_URL: str = "http://192.168.11.209:48804"
 
     # ── SMTP Email (Gmail App Password) ───────────────────
     # Set real values in backend/.env (gitignored). Never hardcode

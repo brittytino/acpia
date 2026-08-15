@@ -18,8 +18,7 @@ export function PairPanel({ caseId }: { caseId: string }) {
       });
       if (res.ok) {
         const data = await res.json();
-        // Override the backend-provided URL with our actual host for mobile access
-        data.url = `http://${window.location.hostname}:48803/pair/${data.token}`;
+        // Use the backend-provided URL which is properly configured with the network IP
         setPairing(data);
       }
     } finally {

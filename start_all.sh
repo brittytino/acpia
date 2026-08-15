@@ -92,6 +92,11 @@ fi
 
 $SUDO $COMPOSE_CMD up -d --build
 
+echo -e "${YELLOW}Pulling required AI models into Ollama (this might take a few minutes)...${RESET}"
+$SUDO docker exec acpia-ollama ollama pull qwen2.5:3b || true
+$SUDO docker exec acpia-ollama ollama pull nomic-embed-text || true
+$SUDO docker exec acpia-ollama ollama pull moondream || true
+
 echo -e "\n${GREEN}${BOLD}"
 echo "======================================================================"
 echo "  ✔ VERITAS CLOUD DOCKER SETUP & LAUNCH COMPLETE!                     "
