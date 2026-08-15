@@ -9,7 +9,7 @@ services:
     ports:
       # Bound to loopback only. Postgres must never be reachable off-host —
       # the whole "air-gapped console" claim depends on this.
-      - "127.0.0.1:47800:5432"
+      - "127.0.0.1:48800:5432"
     volumes:
       - acpia_pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -23,7 +23,7 @@ services:
     container_name: acpia-ollama
     ports:
       # Loopback only — the Ollama API has no auth of its own.
-      - "127.0.0.1:47801:11434"
+      - "127.0.0.1:48801:11434"
     volumes:
       - acpia_ollama:/root/.ollama
     restart: unless-stopped
@@ -57,15 +57,15 @@ services:
       # Explicit opt-in only — creates well-known demo accounts. Leave unset/false
       # for any deployment holding real cases.
       SEED_DEMO_USERS: ${SEED_DEMO_USERS:-false}
-      BACKEND_PORT: "47802"
+      BACKEND_PORT: "48802"
       STORAGE_PATH: /app/storage
       # CORS — explicit origin allowlist. Never "*": this app sends credentialed
       # requests, and a wildcard origin with allow_credentials=True means any
       # website can make authenticated calls on a logged-in officer's behalf.
-      CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:47803","http://localhost:47804"]}
+      CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:48803","http://localhost:48804"]}
       # Frontend URLs (for email links — point to public-facing ports)
-      SEAL_URL: ${SEAL_URL:-http://localhost:47803}
-      CONSOLE_URL: ${CONSOLE_URL:-http://localhost:47804}
+      SEAL_URL: ${SEAL_URL:-http://localhost:48803}
+      CONSOLE_URL: ${CONSOLE_URL:-http://localhost:48804}
       # SMTP — unset by default. Set real values (and SMTP_ENABLED=true) in .env.
       SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
       SMTP_PORT: ${SMTP_PORT:-587}
@@ -74,7 +74,7 @@ services:
       SMTP_FROM: ${SMTP_FROM:-VERITAS ACPIA <noreply@acpia.gov.in>}
       SMTP_ENABLED: ${SMTP_ENABLED:-false}
     ports:
-      - "47802:47802"
+      - "48802:48802"
     depends_on:
       postgres:
         condition: service_healthy
@@ -82,7 +82,7 @@ services:
     volumes:
       - acpia_uploads:/app/storage
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:47802/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:48802/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -93,7 +93,7 @@ services:
       dockerfile: Dockerfile
     container_name: acpia-seal
     ports:
-      - "47803:3000"
+      - "48803:3000"
     depends_on:
       - backend
     restart: unless-stopped
@@ -104,7 +104,7 @@ services:
       dockerfile: Dockerfile
     container_name: acpia-console
     ports:
-      - "47804:3000"
+      - "48804:3000"
     depends_on:
       - backend
     restart: unless-stopped
