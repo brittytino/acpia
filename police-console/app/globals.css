@@ -155,22 +155,29 @@ a:hover { text-decoration: underline; }
 .topbar-brand {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2);
   text-decoration: none;
   color: var(--white);
-  flex-shrink: 0;
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.topbar-brand-text {
+  display: flex;
+  align-items: center;
 }
 
 .topbar-logo-img {
-  height: 38px;
+  height: 36px;
   width: auto;
   object-fit: contain;
+  flex-shrink: 0;
 }
 
 .topbar-title {
   font-size: var(--text-sm);
   font-weight: 900;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   color: var(--white);
   text-transform: uppercase;
   white-space: nowrap;
@@ -179,18 +186,18 @@ a:hover { text-decoration: underline; }
 .topbar-badge {
   background: var(--gold);
   color: var(--gray-900);
-  padding: 1px 6px;
+  padding: 1px 5px;
   border-radius: var(--radius-sm);
-  font-size: var(--text-xs);
+  font-size: 0.6875rem;
   font-weight: 700;
-  margin-left: var(--space-2);
+  margin-left: 6px;
   white-space: nowrap;
 }
 
 .topbar-page-title {
-  margin-left: 16px;
-  padding-left: 12px;
-  border-left: 1px solid rgba(255, 255, 255, 0.2);
+  margin-left: 12px;
+  padding-left: 10px;
+  border-left: 1px solid rgba(255, 255, 255, 0.25);
   font-size: 0.8125rem;
   color: rgba(255, 255, 255, 0.85);
   font-weight: 700;
@@ -200,7 +207,7 @@ a:hover { text-decoration: underline; }
 .topbar-user {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: 8px;
   font-size: var(--text-sm);
   flex-shrink: 0;
 }
@@ -220,7 +227,7 @@ a:hover { text-decoration: underline; }
   color: var(--white);
   padding: 2px 6px;
   border-radius: var(--radius-sm);
-  font-size: var(--text-xs);
+  font-size: 0.6875rem;
   font-weight: 700;
   text-transform: uppercase;
   white-space: nowrap;
@@ -228,7 +235,7 @@ a:hover { text-decoration: underline; }
 
 .btn-signout {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.35);
   color: var(--white);
   padding: 4px 8px;
   border-radius: var(--radius-sm);
@@ -236,6 +243,7 @@ a:hover { text-decoration: underline; }
   cursor: pointer;
   transition: all 0.15s;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 .btn-signout:hover {
   background: rgba(255, 255, 255, 0.2);
@@ -743,9 +751,40 @@ textarea.input { resize: vertical; min-height: 80px; }
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 680px) {
+  .topbar {
+    padding: 0 10px;
+    gap: 6px;
+  }
+
   .topbar-unit-label {
     display: none;
+  }
+
+  .topbar-username {
+    display: none;
+  }
+
+  .topbar-badge {
+    display: none;
+  }
+
+  .topbar-logo-img {
+    height: 32px;
+  }
+
+  .topbar-title {
+    font-size: 0.8125rem;
+  }
+
+  .user-badge {
+    font-size: 0.625rem;
+    padding: 2px 4px;
+  }
+
+  .btn-signout {
+    padding: 3px 6px;
+    font-size: 0.6875rem;
   }
 }
 
@@ -754,24 +793,41 @@ textarea.input { resize: vertical; min-height: 80px; }
     grid-template-columns: 1fr;
   }
 
-  .topbar-title {
-    font-size: 0.8125rem;
-  }
-
-  .topbar-badge {
-    display: none;
-  }
-
-  .topbar-username {
-    display: none;
-  }
-
   .modal-body {
     padding: var(--space-4);
   }
 
   .modal-header, .modal-footer {
     padding: var(--space-3) var(--space-4);
+  }
+}
+
+@media (max-width: 460px) {
+  .topbar {
+    padding: 0 8px;
+    gap: 4px;
+  }
+
+  .topbar-menu-toggle {
+    padding: 3px 6px;
+    font-size: 1.1rem;
+  }
+
+  .topbar-logo-img {
+    height: 28px;
+  }
+
+  .topbar-title {
+    font-size: 0.75rem;
+  }
+
+  .user-badge {
+    display: none;
+  }
+
+  .btn-signout {
+    padding: 3px 6px;
+    font-size: 0.6875rem;
   }
 }
 

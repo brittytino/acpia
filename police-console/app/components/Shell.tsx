@@ -82,7 +82,7 @@ export function Shell({ children, title }: { children: React.ReactNode; title?: 
               alt="VERITAS Logo"
               className="topbar-logo-img"
             />
-            <div style={{ display: "flex", alignItems: "center" }}>
+            <div className="topbar-brand-text">
               <span className="topbar-title">VERITAS CONSOLE</span>
               <span className="topbar-badge">v6.0</span>
             </div>
@@ -118,9 +118,12 @@ export function Shell({ children, title }: { children: React.ReactNode; title?: 
       <aside className={`sidebar ${menuOpen ? "open" : ""}`}>
         {/* Mobile Header inside drawer */}
         <div className="sidebar-mobile-header">
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
             <span style={{ fontWeight: 900, color: "var(--primary)", fontSize: "0.875rem" }}>
-              NAVIGATION
+              {user.username}
+            </span>
+            <span className="badge badge-gold" style={{ width: "fit-content", fontSize: "0.625rem" }}>
+              {user.role}
             </span>
           </div>
           <button
