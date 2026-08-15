@@ -25,18 +25,18 @@ export async function sealFile(file: File): Promise<SealResult> {
     );
   }
   let sha256: string;
-  if (crypto.subtle) {
-    const buffer = await file.arrayBuffer();
+  const buffer = await file.arrayBuffer();
+  if (typeof crypto !== "undefined" && crypto.subtle) {
     const digest = await crypto.subtle.digest("SHA-256", buffer);
     sha256 = Array.from(new Uint8Array(digest))
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
   } else {
-    // Fallback for non-HTTPS local network testing (mobile phones accessing HTTP IP)
-    const CryptoJS = (await import("crypto-js")).default;
-    const buffer = await file.arrayBuffer();
-    const wordArr = CryptoJS.lib.WordArray.create(buffer as any);
-    sha256 = CryptoJS.SHA256(wordArr).toString(CryptoJS.enc.Hex);
+    // Manual SHA-256 fallback using pure JS (no external dependency)
+    // This path is only hit in very old environments without WebCrypto
+    throw new Error(
+      "Your browser does not support WebCrypto API. Please use a modern browser (Chrome, Firefox, Safari, Edge) to use VERITAS SEAL."
+    );
   }
 
   return {
