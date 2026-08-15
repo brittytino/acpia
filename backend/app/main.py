@@ -35,9 +35,7 @@ async def lifespan(app: FastAPI):
     # Auto-seed demo users — dev/staging convenience only. Never run this
     # against a production database: it creates well-known credentials
     # (see backend/scripts/seed.py) and resets them on every restart.
-    if settings.ENVIRONMENT == "production":
-        log.info("ENVIRONMENT=production — skipping demo user seeding")
-    else:
+    if settings.SEED_DEMO_USERS:
         try:
             sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             from scripts.seed import seed_users
@@ -63,6 +61,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
+    allow_origin_regex=".*",  # Bulletproof CORS for hackathon
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
