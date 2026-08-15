@@ -6,11 +6,11 @@ from typing import Callable, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.lead import Lead
 from app.models.conversation import Message
-from app.agents.llm import chat_json
-from app.config import settings
+from app.agents.openrouter import chat_json
 from app.lang.detect import detect
 from app.lang.drift import compute_drift
 from app.agents.link import IdentityBuilder
+from app.services import storage
 
 log = logging.getLogger(__name__)
 
@@ -130,8 +130,8 @@ async def narrative_agent(
     device_tag: Optional[str] = None,
 ) -> None:
     try:
-        with open(storage_path, "r", encoding="utf-8", errors="ignore") as f:
-            text = f.read()
+        content = await storage.fetch_bytes(storage_path)
+        text = content.decode("utf-8", errors="ignore")
     except Exception as e:
         log.error(f"Could not read conversation file: {e}")
         return
@@ -147,7 +147,7 @@ async def narrative_agent(
 
         window = format_window(messages, i, back=5)
         try:
-            result = await chat_json(settings.model_text, STAGE_SYSTEM_PROMPT, window, STAGE_SCHEMA)
+            result = await chat_json(STAGE_SYSTEM_PROMPT, window, STAGE_SCHEMA)
             msg.stage = result.get("stage", "none")
             msg.stage_conf = result.get("confidence", 0.0)
             msg.evidence_span = result.get("evidence_span", f"L{msg.line_num}")

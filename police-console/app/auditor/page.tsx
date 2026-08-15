@@ -2,7 +2,7 @@
 import { Shell } from "../components/Shell";
 import { useEffect, useState } from "react";
 
-const API = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? `http://${window.location.hostname}:47802` : "http://localhost:47802");
+const API = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? `http://${window.location.hostname}:48802` : "http://localhost:48802");
 
 export default function AuditorPage() {
   const [cases, setCases] = useState<any[]>([]);
@@ -91,7 +91,7 @@ export default function AuditorPage() {
         )}
 
         {audit && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+          <div className="audit-grid">
             {/* Hash Chain Integrity */}
             <div className="card">
               <div className="card-header">

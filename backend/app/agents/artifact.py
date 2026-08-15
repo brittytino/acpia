@@ -1,68 +1,47 @@
 """
 Artifact Agent — per-file processing.
-EXIF/GPS extraction, OCR, moondream description, nomic-embed-text embeddings, relevance scoring.
-Emits artifact.processed event.
+EXIF/GPS extraction, OCR, vision description (OpenRouter), embeddings
+(Gemini), relevance scoring. Emits artifact.processed event.
 """
-import hashlib
-import io
-import json
 import logging
-from pathlib import Path
 from typing import Optional
-import httpx
 from PIL import Image
 import piexif
 
-from app.config import settings
+from app.agents import openrouter
+from app.agents import embeddings as embed_agent
+from app.services import storage
 
 log = logging.getLogger(__name__)
 
-OLLAMA_BASE = settings.OLLAMA_BASE_URL
-VISION_MODEL = settings.VISION_MODEL
-EMBED_MODEL = settings.EMBED_MODEL
+_VISION_PROMPT = (
+    "Describe what is in this image in one sentence. Focus on objects, "
+    "setting, and any visible text. Do not reproduce or describe any "
+    "illegal content."
+)
 
 
-async def _moondream_describe(image_path: str) -> str:
-    """Get moondream description of an image — never reproduces content, just describes."""
-    import base64
+async def _describe(image_bytes: bytes) -> str:
+    """Vision description via OpenRouter's fallback model chain — never
+    reproduces content, just describes."""
     try:
-        with open(image_path, "rb") as f:
-            img_b64 = base64.b64encode(f.read()).decode()
-        async with httpx.AsyncClient(base_url=OLLAMA_BASE, timeout=60) as c:
-            resp = await c.post("/api/generate", json={
-                "model": VISION_MODEL,
-                "prompt": "Describe what is in this image in one sentence. Focus on objects, setting, and any visible text. Do not reproduce or describe any illegal content.",
-                "images": [img_b64],
-                "stream": False,
-                "keep_alive": -1,
-            })
-            return resp.json().get("response", "")[:500]
+        return await openrouter.vision_describe(image_bytes, _VISION_PROMPT)
     except Exception as e:
-        log.warning(f"moondream failed: {e}")
+        log.warning(f"vision_describe failed: {e}")
         return ""
 
 
 async def _embed(text: str) -> Optional[list]:
-    """Embed text with nomic-embed-text."""
+    """Embed text via Gemini's text-embedding-004."""
     if not text.strip():
         return None
-    try:
-        async with httpx.AsyncClient(base_url=OLLAMA_BASE, timeout=30) as c:
-            resp = await c.post("/api/embeddings", json={
-                "model": EMBED_MODEL,
-                "prompt": text[:2000],
-                "keep_alive": -1,
-            })
-            return resp.json().get("embedding")
-    except Exception as e:
-        log.warning(f"embed failed: {e}")
-        return None
+    return await embed_agent.embed(text[:2000])
 
 
-def _extract_exif(path: str) -> dict:
-    """Extract EXIF/GPS metadata from image."""
+def _extract_exif(content: bytes) -> dict:
+    """Extract EXIF/GPS metadata from image bytes."""
     try:
-        exif_data = piexif.load(path)
+        exif_data = piexif.load(content)
         result = {}
         if "GPS" in exif_data and exif_data["GPS"]:
             gps = exif_data["GPS"]
@@ -91,16 +70,22 @@ def _extract_exif(path: str) -> dict:
         return {}
 
 
-def _ocr_text(path: str, mime_type: str) -> str:
-    """Extract text — from image via pytesseract, or read plaintext files."""
+def _ocr_text(content: bytes, mime_type: str) -> str:
+    """Extract text — from image via pytesseract, or decode plaintext files."""
     try:
         if mime_type.startswith("text/"):
-            with open(path, "r", encoding="utf-8", errors="ignore") as f:
-                return f.read()[:10000]
+            return content.decode("utf-8", errors="ignore")[:10000]
         if mime_type.startswith("image/"):
             try:
+                import io
                 import pytesseract
-                img = Image.open(path)
+                from PIL import ImageEnhance
+                img = Image.open(io.BytesIO(content))
+                # Enhance for dark-mode screenshot OCR
+                img = img.convert('L') # Grayscale
+                img = img.resize((img.width * 2, img.height * 2), Image.Resampling.LANCZOS)
+                enhancer = ImageEnhance.Contrast(img)
+                img = enhancer.enhance(2.0)
                 return pytesseract.image_to_string(img)[:5000]
             except ImportError:
                 pass
@@ -128,13 +113,21 @@ async def artifact_agent(evidence_record) -> dict:
     """
     Process one evidence record. Returns a dict for the artifact.processed event.
     evidence_record: SQLAlchemy Evidence ORM object
+    storage_path holds a Cloudinary URL (see app/services/storage.py) —
+    fetched once here into memory rather than opened off local disk, since
+    Render's free tier has no persistent filesystem.
     """
-    path = evidence_record.storage_path
     mime = evidence_record.mime_type
 
-    exif = _extract_exif(path) if mime.startswith("image/") else {}
-    ocr = _ocr_text(path, mime)
-    description = await _moondream_describe(path) if mime.startswith("image/") else ""
+    try:
+        content = await storage.fetch_bytes(evidence_record.storage_path)
+    except Exception as e:
+        log.warning(f"could not fetch evidence bytes from storage: {e}")
+        content = b""
+
+    exif = _extract_exif(content) if mime.startswith("image/") and content else {}
+    ocr = _ocr_text(content, mime) if content else ""
+    description = await _describe(content) if mime.startswith("image/") and content else ""
     embed_text = description or ocr[:2000]
     embedding = await _embed(embed_text)
     relevance = _relevance_score(description, ocr, exif)

@@ -1,6 +1,7 @@
 """VERITAS pipeline orchestrator — runs all five agents against real DB
 state for one case, emitting every step over the WebSocket as it happens.
-`Semaphore(3)` bounds Ollama concurrency so 6 GB VRAM never queues unpredictably.
+`Semaphore(3)` bounds concurrent OpenRouter/Gemini calls so a burst of
+uploads doesn't trip the free-tier rate limits on those APIs.
 """
 import asyncio
 import logging

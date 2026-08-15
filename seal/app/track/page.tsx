@@ -54,21 +54,21 @@ export default function TrackPage() {
               <label htmlFor="track-ref-input" className="form-label">
                 Reference Code <span className="required">*</span>
               </label>
-              <div style={{ display: "flex", gap: "10px" }}>
+              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
                 <input
                   id="track-ref-input"
                   className="input mono"
                   placeholder="e.g. ACP-7K4M-2X9P"
                   value={refCode}
                   onChange={(e) => setRefCode(e.target.value)}
-                  style={{ fontSize: "1.1rem", fontWeight: 700, letterSpacing: "0.05em" }}
+                  style={{ fontSize: "1.1rem", fontWeight: 700, letterSpacing: "0.05em", flex: "1 1 200px" }}
                   required
                 />
                 <button
                   type="submit"
                   className="btn btn-primary btn-lg"
                   disabled={searching || !refCode.trim()}
-                  style={{ minWidth: "140px" }}
+                  style={{ minWidth: "140px", flex: "1 1 auto" }}
                 >
                   {searching ? "Searching..." : "Track Status"}
                 </button>

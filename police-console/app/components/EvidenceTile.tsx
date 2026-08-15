@@ -1,6 +1,6 @@
 "use client";
 
-const API = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? `http://${window.location.hostname}:47802` : "http://localhost:47802");
+const API = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? `http://${window.location.hostname}:48802` : "http://localhost:48802");
 
 interface Indicator {
   kind: string;
@@ -151,7 +151,7 @@ export function EvidenceTile({ e, onRevealed }: { e: Evidence; onRevealed: () =>
               {indicators.map((ind: any, i: number) => (
                 <div key={i} style={{ 
                   background: "var(--white)", border: "var(--border)", 
-                  borderLeft: `3px solid ${ind.severity === "high" ? "var(--error)" : ind.severity === "medium" ? "var(--warning)" : "var(--info)"}`,
+                  borderLeft: `3px solid ${ind.severity === "high" ? "var(--danger)" : ind.severity === "medium" ? "var(--warning)" : "var(--info)"}`,
                   borderRadius: "var(--radius-sm)", padding: "6px 8px", marginBottom: "4px", fontSize: "0.6875rem" 
                 }}>
                   <div style={{ fontWeight: 700, color: "var(--gray-900)" }}>{ind.kind.replace(/_/g, " ")}</div>

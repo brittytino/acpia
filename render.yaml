@@ -1,0 +1,83 @@
+# Render Blueprint — backend only (seal/police-console deploy on Vercel).
+# Connect this repo at dashboard.render.com/blueprints and Render creates
+# and redeploys this service automatically on every push to main. Env vars
+# marked `sync: false` are secrets Render will prompt you for once in its
+# dashboard (Environment tab) — they are never committed here.
+#
+# See DEPLOYMENT.md for the full setup walkthrough, including which values
+# to paste in for each `sync: false` var.
+services:
+  - type: web
+    name: acpia-backend
+    env: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: BACKEND_PORT
+        value: "47802"
+
+      # JWT signing secret — generate with: openssl rand -base64 48
+      - key: SECRET_KEY
+        sync: false
+
+      # Neon Postgres — use the DIRECT (non-pooled) connection string for
+      # both of these, not the "-pooler" one (asyncpg's prepared statements
+      # are incompatible with PgBouncer transaction pooling). See
+      # DEPLOYMENT.md for how DATABASE_URL_APP's role gets provisioned.
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_URL_SYNC
+        sync: false
+      - key: DATABASE_URL_APP
+        sync: false
+      - key: DB_APP_ROLE
+        value: veritas_app
+      - key: DB_APP_PASSWORD
+        sync: false
+      - key: DB_SSL_REQUIRE
+        value: "true"
+
+      # OpenRouter (text + vision, free fallback chain) — https://openrouter.ai/keys
+      - key: OPENROUTER_API_KEY
+        sync: false
+      # Google Gemini (embeddings only) — https://aistudio.google.com/apikey
+      - key: GEMINI_API_KEY
+        sync: false
+      # Cloudinary (evidence file storage) — https://cloudinary.com/console
+      - key: CLOUDINARY_URL
+        sync: false
+
+      # Explicit origin allowlist — the two Vercel-hosted frontends.
+      - key: CORS_ORIGINS
+        value: '["https://seal.acpia.tinobritty.me","https://console.acpia.tinobritty.me"]'
+      - key: SEAL_URL
+        value: https://seal.acpia.tinobritty.me
+      - key: CONSOLE_URL
+        value: https://console.acpia.tinobritty.me
+
+      # Never true against a database holding real cases.
+      - key: SEED_DEMO_USERS
+        value: "false"
+
+      # SMTP — leave disabled unless you set real Gmail App Password
+      # credentials in the Render dashboard for these.
+      - key: SMTP_ENABLED
+        value: "false"
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        value: VERITAS ACPIA <noreply@acpia.gov.in>

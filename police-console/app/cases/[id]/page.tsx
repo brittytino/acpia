@@ -8,8 +8,8 @@ import { PairPanel } from "../../components/PairPanel";
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 
-const API = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? `http://${window.location.hostname}:47802` : "http://localhost:47802");
-const WS_API = process.env.NEXT_PUBLIC_WS_URL || (typeof window !== "undefined" ? `ws://${window.location.hostname}:47802` : "ws://localhost:47802");
+const API = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? `http://${window.location.hostname}:48802` : "http://localhost:48802");
+const WS_API = process.env.NEXT_PUBLIC_WS_URL || (typeof window !== "undefined" ? `ws://${window.location.hostname}:48802` : "ws://localhost:48802");
 
 export default function CaseWorkspace({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -273,7 +273,7 @@ export default function CaseWorkspace({ params }: { params: { id: string } }) {
 
       <div className="page-body">
         {/* Main Split Grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: "24px" }}>
+        <div className="workspace-grid">
           {/* Main Content Area */}
           <div>
             {/* Blind Dual Submission Status (if FAIR) */}
@@ -282,7 +282,7 @@ export default function CaseWorkspace({ params }: { params: { id: string } }) {
                 <div style={{ fontWeight: 700, color: "var(--primary)", fontSize: "0.9375rem", marginBottom: "8px" }}>
                   Blind Dual Submission Status
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "8px" }}>
+                <div className="detail-meta-grid" style={{ marginBottom: "8px" }}>
                   {disputeCodes.map((dc) => (
                     <div key={dc.role} style={{ background: "var(--gray-50)", border: "var(--border)", borderRadius: "var(--radius-sm)", padding: "10px 14px" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
@@ -533,7 +533,7 @@ export default function CaseWorkspace({ params }: { params: { id: string } }) {
                         {e.exif && Object.keys(e.exif).length > 0 && (
                           <div style={{ marginBottom: "10px", background: "var(--white)", border: "var(--border)", borderRadius: "var(--radius-sm)", padding: "10px 14px" }}>
                             <div style={{ fontSize: "0.6875rem", fontWeight: 700, textTransform: "uppercase", color: "var(--gray-600)", marginBottom: "6px" }}>Embedded Metadata (EXIF)</div>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 16px" }}>
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "4px 16px" }}>
                               {Object.entries(e.exif).slice(0, 10).map(([key, val]: [string, any]) => (
                                 <div key={key} style={{ fontSize: "0.6875rem" }}>
                                   <span style={{ color: "var(--gray-500)" }}>{key}:</span>{" "}
@@ -590,7 +590,7 @@ export default function CaseWorkspace({ params }: { params: { id: string } }) {
                       <h3>🔍 Evidence Comparison Report — Complainant vs Respondent</h3>
                     </div>
                     <div style={{ padding: "16px 20px" }}>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
+                      <div className="detail-meta-grid" style={{ marginBottom: "20px", gap: "20px" }}>
                         {/* Complainant Column */}
                         <div>
                           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>

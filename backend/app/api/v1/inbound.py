@@ -50,6 +50,12 @@ async def create_case(db: AsyncSession, title: str, user_id: UUID):
 
 
 async def sha256_of_file(path: str) -> str:
+    # Only exercised when a SealedArtifact.body_stored is True — the seal
+    # flow is hash-only by design (the file body never leaves the sealer's
+    # device), so this rarely runs. If a body-stored artifact upload path
+    # is ever added, wire it through app.services.storage like evidence.py
+    # does, and this would need to fetch bytes from a Cloudinary URL
+    # instead of opening a local path.
     h = hashlib.sha256()
     async with aiofiles.open(path, 'rb') as f:
         while chunk := await f.read(8192):

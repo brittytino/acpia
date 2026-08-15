@@ -1,6 +1,6 @@
 "use client";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useRef, Suspense } from "react";
+import { useState, Suspense } from "react";
 import GovLayout from "../components/GovLayout";
 
 const PLATFORM_TIPS = [
@@ -51,163 +51,163 @@ function PreserveContent() {
   const params = useSearchParams();
   const path = params.get("path") || "guardian";
   const [selectedPlatform, setSelectedPlatform] = useState<string>("WhatsApp");
-  const [file, setFile] = useState<File | null>(null);
-  const [dragOver, setDragOver] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
   const platform = PLATFORM_TIPS.find((p) => p.name === selectedPlatform) || PLATFORM_TIPS[0];
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    const f = e.dataTransfer.files[0];
-    if (f) setFile(f);
-  };
-
   const handleContinue = () => {
-    if (file) {
-      sessionStorage.setItem("seal_filename", file.name);
-      sessionStorage.setItem("seal_size", String(file.size));
-      sessionStorage.setItem("seal_path", path);
-      router.push(`/seal?path=${path}&filename=${encodeURIComponent(file.name)}`);
-    }
+    sessionStorage.setItem("seal_path", path);
+    router.push(`/seal?path=${path}`);
   };
 
   return (
     <GovLayout>
-      <div className="container-form" style={{ padding: "40px var(--space-6)" }}>
-        {/* Step Progress */}
-        <div className="step-tracker">
-          <div className="step-item completed">
-            <div className="step-circle">✓</div>
-            <span>Situation</span>
-          </div>
-          <div className="step-line completed" />
-          <div className="step-item active">
-            <div className="step-circle">2</div>
-            <span>Preserve</span>
-          </div>
-          <div className="step-line" />
-          <div className="step-item">
-            <div className="step-circle">3</div>
-            <span>Digital Fingerprint</span>
-          </div>
-          <div className="step-line" />
-          <div className="step-item">
-            <div className="step-circle">4</div>
-            <span>Certificate</span>
+      {/* Full-width step banner */}
+      <div className="step-banner">
+        <div className="step-banner-inner">
+          <div className="step-tracker">
+            <div className="step-item completed">
+              <div className="step-circle">✓</div>
+              <span>Situation</span>
+            </div>
+            <div className="step-line completed" />
+            <div className="step-item active">
+              <div className="step-circle">2</div>
+              <span>Preserve</span>
+            </div>
+            <div className="step-line" />
+            <div className="step-item">
+              <div className="step-circle">3</div>
+              <span>Digital Fingerprint</span>
+            </div>
+            <div className="step-line" />
+            <div className="step-item">
+              <div className="step-circle">4</div>
+              <span>Certificate</span>
+            </div>
           </div>
         </div>
+      </div>
 
-        <div className="card">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+      {/* Full-width two-column layout */}
+      <div className="step-page-layout">
+        {/* LEFT: Main form */}
+        <div className="step-main-col">
+          <div className="step-page-header">
             <button className="btn btn-ghost" onClick={() => router.back()}>
               ← Back
             </button>
             <span className="badge badge-gold">Step 2 of 4</span>
           </div>
 
-          <h2 style={{ fontSize: "1.5rem", color: "var(--primary)", marginBottom: "8px" }}>
-            Prepare Your Evidence
-          </h2>
-          <p style={{ marginBottom: "24px" }}>
-            Select the platform where the incident occurred for export guidance, then choose the file on your device.
+          <div className="step-icon-row">
+            <span className="step-icon-large">📁</span>
+            <h1 className="step-main-heading">Prepare Your Evidence</h1>
+          </div>
+          <p className="step-main-desc">
+            Select the platform where the incident occurred to get export instructions. Then proceed to create a cryptographic fingerprint — your file never leaves your device.
           </p>
 
-          {/* Platform Selector Tabs */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "8px", marginBottom: "20px" }}>
-            {PLATFORM_TIPS.map((p) => (
-              <button
-                key={p.name}
-                id={`platform-${p.name.toLowerCase()}`}
-                className="btn btn-ghost"
-                onClick={() => setSelectedPlatform(p.name)}
-                style={{
-                  flexDirection: "column",
-                  padding: "12px 6px",
-                  borderColor: selectedPlatform === p.name ? "var(--primary)" : "var(--gray-200)",
-                  background: selectedPlatform === p.name ? "var(--primary-light)" : "var(--white)",
-                  color: selectedPlatform === p.name ? "var(--primary)" : "var(--gray-900)",
-                  fontWeight: selectedPlatform === p.name ? 900 : 600,
-                }}
-              >
-                <span style={{ fontSize: "1.25rem", marginBottom: "4px" }}>{p.icon}</span>
-                <span style={{ fontSize: "0.8125rem" }}>{p.name}</span>
-              </button>
-            ))}
+          {/* Platform Selector */}
+          <div style={{ marginBottom: "24px" }}>
+            <label style={{ display: "block", fontWeight: 700, color: "var(--gray-900)", marginBottom: "12px", fontSize: "0.9375rem" }}>
+              Where did the incident occur?
+            </label>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "10px" }}>
+              {PLATFORM_TIPS.map((p) => (
+                <button
+                  key={p.name}
+                  id={`platform-${p.name.toLowerCase()}`}
+                  className="platform-tab-btn"
+                  onClick={() => setSelectedPlatform(p.name)}
+                  data-active={selectedPlatform === p.name ? "true" : "false"}
+                >
+                  <span style={{ fontSize: "1.5rem" }}>{p.icon}</span>
+                  <span>{p.name}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* Platform Instructions Box */}
-          <div style={{ background: "var(--gray-50)", border: "var(--border)", borderRadius: "var(--radius-sm)", padding: "16px 20px", marginBottom: "24px" }}>
-            <div style={{ fontWeight: 700, color: "var(--primary)", fontSize: "0.9375rem", marginBottom: "10px" }}>
+          {/* Platform Instructions */}
+          <div className="platform-instructions-box">
+            <div className="platform-instructions-title">
               How to export from {platform.name}:
             </div>
-            <ol style={{ paddingLeft: "20px", display: "flex", flexDirection: "column", gap: "6px", fontSize: "0.875rem", color: "var(--gray-900)" }}>
+            <ol className="platform-instructions-list">
               {platform.steps.map((step, i) => (
-                <li key={i}>{step}</li>
+                <li key={i}>
+                  <span className="platform-step-num">{i + 1}</span>
+                  <span>{step}</span>
+                </li>
               ))}
             </ol>
           </div>
 
-          {/* File Dropzone */}
-          <div
-            id="file-dropzone"
-            onDrop={handleDrop}
-            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-            onDragLeave={() => setDragOver(false)}
-            onClick={() => inputRef.current?.click()}
-            style={{
-              border: `2px dashed ${dragOver || file ? "var(--secondary)" : "var(--gray-300)"}`,
-              borderRadius: "var(--radius-md)",
-              padding: "36px 20px",
-              textAlign: "center",
-              cursor: "pointer",
-              background: dragOver || file ? "var(--secondary-light)" : "var(--white)",
-              marginBottom: "20px",
-              transition: "all 0.15s ease",
-            }}
-          >
-            <input
-              ref={inputRef}
-              type="file"
-              style={{ display: "none" }}
-              onChange={(e) => e.target.files?.[0] && setFile(e.target.files[0])}
-            />
-            {file ? (
-              <div>
-                <div style={{ fontSize: "2rem", marginBottom: "8px" }}>📄</div>
-                <div style={{ fontWeight: 700, color: "var(--primary)", fontSize: "1rem" }}>{file.name}</div>
-                <div style={{ fontSize: "0.8125rem", color: "var(--gray-600)", marginTop: "4px" }}>
-                  {(file.size / 1024).toFixed(1)} KB &bull; Ready for digital fingerprinting
-                </div>
-              </div>
-            ) : (
-              <div>
-                <div style={{ fontSize: "2rem", marginBottom: "8px" }}>📁</div>
-                <div style={{ fontWeight: 700, color: "var(--gray-900)", fontSize: "1rem", marginBottom: "4px" }}>
-                  Click to select file or drop file here
-                </div>
-                <div style={{ fontSize: "0.8125rem", color: "var(--gray-600)" }}>
-                  Supports screenshots, exported chats (.txt, .json, .zip), audio, and video files
-                </div>
-              </div>
-            )}
-          </div>
-
           <div className="alert alert-info" style={{ marginBottom: "24px" }}>
-            <strong>Local Processing Privacy Guarantee:</strong>
-            <br />
-            This file stays in your local browser memory. No file content will be uploaded or transmitted across the network during digital fingerprinting.
+            <strong>📋 Evidence Quality Reminder:</strong><br />
+            Use original, uncompressed files when possible. Forwarded or re-saved screenshots may have reduced metadata which could affect forensic analysis.
           </div>
 
           <button
             id="continue-btn"
             className="btn btn-primary btn-block btn-lg"
-            disabled={!file}
             onClick={handleContinue}
           >
-            {file ? "Continue to Digital Fingerprint →" : "Select a File to Continue"}
+            Continue to Digital Fingerprint (Step 3) →
           </button>
+        </div>
+
+        {/* RIGHT: Help panel */}
+        <div className="step-help-col">
+          <div className="step-help-card">
+            <div className="step-help-header">
+              <span>🔬</span>
+              <h3>What happens next?</h3>
+            </div>
+            <ul className="step-help-list">
+              {[
+                "Your browser will compute a SHA-256 hash of your file",
+                "No file content is sent to any server",
+                "The hash creates a tamper-proof digital seal",
+                "If the file changes even 1 byte, the hash changes completely",
+                "This hash is your court-admissible evidence record",
+              ].map((point, i) => (
+                <li key={i}>
+                  <span className="step-help-check">✓</span>
+                  <span>{point}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="step-help-card">
+            <div className="step-help-header">
+              <span>📦</span>
+              <h4>Accepted File Types</h4>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+              {["PNG", "JPG", "MP4", "TXT", "ZIP", "JSON", "HTML", "PDF", "MOV", "AVI"].map((ext) => (
+                <span key={ext} className="badge badge-neutral">{ext}</span>
+              ))}
+            </div>
+            <p style={{ fontSize: "0.8125rem", color: "var(--gray-600)", marginTop: "12px", marginBottom: 0, lineHeight: 1.5 }}>
+              Maximum recommended file size: 500 MB. Larger files may take longer to fingerprint.
+            </p>
+          </div>
+
+          <div className="step-help-card step-help-emergency">
+            <div className="step-help-header">
+              <span>📞</span>
+              <h4>Need Help?</h4>
+            </div>
+            <a href="tel:1098" className="step-emergency-link">
+              <span className="step-emergency-num">1098</span>
+              <span>Childline — 24/7 Free</span>
+            </a>
+            <a href="https://cybercrime.gov.in" target="_blank" rel="noopener noreferrer" className="step-emergency-link" style={{ textDecoration: "none" }}>
+              <span className="step-emergency-num" style={{ fontSize: "0.75rem" }}>cybercrime.gov.in</span>
+              <span>MHA Cybercrime Portal ↗</span>
+            </a>
+          </div>
         </div>
       </div>
     </GovLayout>

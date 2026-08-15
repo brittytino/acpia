@@ -71,10 +71,10 @@ echo -e "${GREEN}✔ System Tech Stack Ready: Docker.${RESET}"
 # STEP 2: Configure Environment Variables
 # ------------------------------------------------------------------------------
 echo -e "${YELLOW}[2/3] Configuring Environment...${RESET}"
-if [ ! -f "backend/.env" ]; then
-    if [ -f "backend/.env.example" ]; then
-        cp backend/.env.example backend/.env
-        echo -e "${GREEN}✔ Created backend/.env from template.${RESET}"
+if [ ! -f ".env" ]; then
+    if [ -f ".env.example" ]; then
+        cp .env.example .env
+        echo -e "${GREEN}✔ Created .env from template.${RESET}"
     fi
 fi
 
@@ -92,15 +92,20 @@ fi
 
 $SUDO $COMPOSE_CMD up -d --build
 
+echo -e "${YELLOW}Pulling required AI models into Ollama (this might take a few minutes)...${RESET}"
+$SUDO docker exec acpia-ollama ollama pull qwen2.5:3b || true
+$SUDO docker exec acpia-ollama ollama pull nomic-embed-text || true
+$SUDO docker exec acpia-ollama ollama pull moondream || true
+
 echo -e "\n${GREEN}${BOLD}"
 echo "======================================================================"
 echo "  ✔ VERITAS CLOUD DOCKER SETUP & LAUNCH COMPLETE!                     "
 echo "======================================================================"
 echo -e "${RESET}"
 echo -e "${CYAN}${BOLD}Cloud Server Endpoints:${RESET}"
-echo -e "  • Police Console UI : ${GREEN}http://${SERVER_IP}:47804${RESET}  (Local: http://localhost:47804)"
-echo -e "  • Seal Citizen App  : ${GREEN}http://${SERVER_IP}:47803${RESET}  (Local: http://localhost:47803)"
-echo -e "  • Backend REST API  : ${GREEN}http://${SERVER_IP}:47802${RESET}  (Local: http://localhost:47802)"
+echo -e "  • Police Console UI : ${GREEN}http://${SERVER_IP}:48804${RESET}  (Local: http://localhost:48804)"
+echo -e "  • Seal Citizen App  : ${GREEN}http://${SERVER_IP}:48803${RESET}  (Local: http://localhost:48803)"
+echo -e "  • Backend REST API  : ${GREEN}http://${SERVER_IP}:48802${RESET}  (Local: http://localhost:48802)"
 echo ""
 echo -e "${CYAN}${BOLD}Demo Credentials (Password: password123):${RESET}"
 echo -e "  • Investigator : ${YELLOW}investigator1${RESET}"

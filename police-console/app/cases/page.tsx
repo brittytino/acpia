@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-const API = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? `http://${window.location.hostname}:47802` : "http://localhost:47802");
+const API = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? `http://${window.location.hostname}:48802` : "http://localhost:48802");
 
 export default function CasesList() {
   const router = useRouter();
@@ -192,21 +192,19 @@ export default function CasesList() {
         )}
 
         <div className="card">
-          <div className="card-header">
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", width: "100%", justifyContent: "space-between" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <h2>Registered Case Ledgers</h2>
-                <span className="badge badge-info">{filtered.length} Cases</span>
-              </div>
-              <div style={{ width: "260px" }}>
-                <input
-                  className="input"
-                  placeholder="Search by case ref or title..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  style={{ fontSize: "0.8125rem", padding: "6px 10px" }}
-                />
-              </div>
+          <div className="card-header" style={{ display: "flex", alignItems: "center", gap: "12px", width: "100%", justifyContent: "space-between", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <h2>Registered Case Ledgers</h2>
+              <span className="badge badge-info">{filtered.length} Cases</span>
+            </div>
+            <div style={{ minWidth: "200px", flex: "1 1 200px", maxWidth: "340px" }}>
+              <input
+                className="input"
+                placeholder="Search by case ref or title..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                style={{ fontSize: "0.8125rem", padding: "6px 10px", width: "100%" }}
+              />
             </div>
           </div>
 

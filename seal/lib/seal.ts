@@ -24,11 +24,19 @@ export async function sealFile(file: File): Promise<SealResult> {
       `This file is ${formatSize(file.size)}, which is larger than this browser can safely fingerprint (500 MB limit). Try a shorter export or a smaller file.`
     );
   }
+  let sha256: string;
   const buffer = await file.arrayBuffer();
-  const digest = await crypto.subtle.digest("SHA-256", buffer);
-  const sha256 = Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+  if (typeof crypto !== "undefined" && crypto.subtle) {
+    const digest = await crypto.subtle.digest("SHA-256", buffer);
+    sha256 = Array.from(new Uint8Array(digest))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  } else {
+    // Manual SHA-256 fallback using pure JS for HTTP environments (like local IPs)
+    const CryptoJS = (await import("crypto-js")).default;
+    const wordArray = CryptoJS.lib.WordArray.create(buffer);
+    sha256 = CryptoJS.SHA256(wordArray).toString(CryptoJS.enc.Hex);
+  }
 
   return {
     sha256,

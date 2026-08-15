@@ -9,7 +9,7 @@ services:
     ports:
       # Bound to loopback only. Postgres must never be reachable off-host —
       # the whole "air-gapped console" claim depends on this.
-      - "127.0.0.1:47800:5432"
+      - "127.0.0.1:48800:5432"
     volumes:
       - acpia_pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -17,24 +17,6 @@ services:
       interval: 5s
       retries: 10
     restart: unless-stopped
-
-  ollama:
-    image: ollama/ollama:latest
-    container_name: acpia-ollama
-    ports:
-      # Loopback only — the Ollama API has no auth of its own.
-      - "127.0.0.1:47801:11434"
-    volumes:
-      - acpia_ollama:/root/.ollama
-    restart: unless-stopped
-    # If you have an NVIDIA GPU, uncomment the following:
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: all
-    #           capabilities: [gpu]
 
   backend:
     build:
@@ -48,24 +30,32 @@ services:
       DATABASE_URL_APP: postgresql+asyncpg://veritas_app:${DB_APP_PASSWORD:?Set DB_APP_PASSWORD in .env}@postgres:5432/acpia
       DB_APP_ROLE: veritas_app
       DB_APP_PASSWORD: ${DB_APP_PASSWORD:?Set DB_APP_PASSWORD in .env}
-      # Ollama AI
-      OLLAMA_BASE_URL: http://ollama:11434
+      # AI — OpenRouter (text + vision) and Gemini (embeddings). Get free
+      # keys at openrouter.ai and aistudio.google.com. Local dev talks to
+      # the same real free APIs prod uses — no local model to run.
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?Set OPENROUTER_API_KEY in .env — https://openrouter.ai/keys}
+      # Model lists are NOT set here on purpose — omitting them lets the
+      # container fall back to config.py's defaults. Only add
+      # OPENROUTER_TEXT_MODELS / OPENROUTER_VISION_MODELS here (and to
+      # .env) if you want to override which free models are tried.
+      GEMINI_API_KEY: ${GEMINI_API_KEY:?Set GEMINI_API_KEY in .env — https://aistudio.google.com/apikey}
+      # Evidence file storage — Cloudinary free tier
+      CLOUDINARY_URL: ${CLOUDINARY_URL:?Set CLOUDINARY_URL in .env — https://cloudinary.com/console}
       # App
-      ENVIRONMENT: production
+      ENVIRONMENT: development
       DEBUG: "false"
       SECRET_KEY: ${JWT_SECRET:?Set JWT_SECRET in .env — e.g. openssl rand -base64 48}
       # Explicit opt-in only — creates well-known demo accounts. Leave unset/false
       # for any deployment holding real cases.
       SEED_DEMO_USERS: ${SEED_DEMO_USERS:-false}
-      BACKEND_PORT: "47802"
-      STORAGE_PATH: /app/storage
+      BACKEND_PORT: "48802"
       # CORS — explicit origin allowlist. Never "*": this app sends credentialed
       # requests, and a wildcard origin with allow_credentials=True means any
       # website can make authenticated calls on a logged-in officer's behalf.
-      CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:47803","http://localhost:47804"]}
+      CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:48803","http://localhost:48804"]}
       # Frontend URLs (for email links — point to public-facing ports)
-      SEAL_URL: ${SEAL_URL:-http://localhost:47803}
-      CONSOLE_URL: ${CONSOLE_URL:-http://localhost:47804}
+      SEAL_URL: ${SEAL_URL:-http://localhost:48803}
+      CONSOLE_URL: ${CONSOLE_URL:-http://localhost:48804}
       # SMTP — unset by default. Set real values (and SMTP_ENABLED=true) in .env.
       SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
       SMTP_PORT: ${SMTP_PORT:-587}
@@ -74,13 +64,11 @@ services:
       SMTP_FROM: ${SMTP_FROM:-VERITAS ACPIA <noreply@acpia.gov.in>}
       SMTP_ENABLED: ${SMTP_ENABLED:-false}
     ports:
-      - "47802:47802"
+      - "48802:47802"
     depends_on:
       postgres:
         condition: service_healthy
     restart: unless-stopped
-    volumes:
-      - acpia_uploads:/app/storage
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:47802/health"]
       interval: 10s
@@ -93,7 +81,7 @@ services:
       dockerfile: Dockerfile
     container_name: acpia-seal
     ports:
-      - "47803:3000"
+      - "48803:3000"
     depends_on:
       - backend
     restart: unless-stopped
@@ -104,12 +92,10 @@ services:
       dockerfile: Dockerfile
     container_name: acpia-console
     ports:
-      - "47804:3000"
+      - "48804:3000"
     depends_on:
       - backend
     restart: unless-stopped
 
 volumes:
   acpia_pgdata:
-  acpia_ollama:
-  acpia_uploads:

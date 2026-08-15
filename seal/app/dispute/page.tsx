@@ -4,7 +4,7 @@ import { useState, Suspense } from "react";
 import { sealFile, formatHash, formatSize, type SealResult } from "@/lib/seal";
 import GovLayout from "../components/GovLayout";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? `http://${window.location.hostname}:47802` : "http://localhost:47802");
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? `http://${window.location.hostname}:48802` : "http://localhost:48802");
 
 type Step = "code" | "seal" | "statement" | "done";
 
@@ -43,9 +43,14 @@ function DisputeContent() {
 
   const handleFile = async (f: File) => {
     setSealing(true);
-    const sealed = await sealFile(f);
-    setResults((r) => [...r, sealed]);
-    setSealing(false);
+    try {
+      const sealed = await sealFile(f);
+      setResults((r) => [...r, sealed]);
+    } catch (err: any) {
+      alert(err.message || "Failed to fingerprint file.");
+    } finally {
+      setSealing(false);
+    }
   };
 
   const submitDispute = async () => {
@@ -195,7 +200,7 @@ function DisputeContent() {
                 <div style={{ marginBottom: "20px" }}>
                   <label className="form-label">Sealed Artifacts ({results.length}):</label>
                   {results.map((r, i) => (
-                    <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "var(--gray-50)", border: "var(--border)", borderRadius: "var(--radius-sm)", marginBottom: "6px" }}>
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "var(--gray-50)", border: "var(--border)", borderRadius: "var(--radius-sm)", marginBottom: "6px", flexWrap: "wrap", gap: "8px" }}>
                       <div>
                         <div style={{ fontWeight: 700, color: "var(--gray-900)", fontSize: "0.875rem" }}>{r.filename}</div>
                         <div className="mono" style={{ fontSize: "0.75rem", color: "var(--gray-600)" }}>

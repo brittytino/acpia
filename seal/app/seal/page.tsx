@@ -1,6 +1,6 @@
 "use client";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useRef, useEffect, Suspense } from "react";
+import { useState, useRef, Suspense } from "react";
 import { sealFile, formatHash, formatSize, type SealResult } from "@/lib/seal";
 import GovLayout from "../components/GovLayout";
 
@@ -45,45 +45,54 @@ function SealContent() {
 
   return (
     <GovLayout>
-      <div className="container-form" style={{ padding: "40px var(--space-6)" }}>
-        {/* Step Tracker */}
-        <div className="step-tracker">
-          <div className="step-item completed">
-            <div className="step-circle">✓</div>
-            <span>Situation</span>
-          </div>
-          <div className="step-line completed" />
-          <div className="step-item completed">
-            <div className="step-circle">✓</div>
-            <span>Preserve</span>
-          </div>
-          <div className="step-line completed" />
-          <div className="step-item active">
-            <div className="step-circle">3</div>
-            <span>Digital Fingerprint</span>
-          </div>
-          <div className="step-line" />
-          <div className="step-item">
-            <div className="step-circle">4</div>
-            <span>Certificate</span>
+      {/* Full-width step banner */}
+      <div className="step-banner">
+        <div className="step-banner-inner">
+          <div className="step-tracker">
+            <div className="step-item completed">
+              <div className="step-circle">✓</div>
+              <span>Situation</span>
+            </div>
+            <div className="step-line completed" />
+            <div className="step-item completed">
+              <div className="step-circle">✓</div>
+              <span>Preserve</span>
+            </div>
+            <div className="step-line completed" />
+            <div className="step-item active">
+              <div className="step-circle">3</div>
+              <span>Digital Fingerprint</span>
+            </div>
+            <div className="step-line" />
+            <div className="step-item">
+              <div className="step-circle">4</div>
+              <span>Certificate</span>
+            </div>
           </div>
         </div>
+      </div>
 
-        <div className="card">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+      {/* Full-width two-column layout */}
+      <div className="step-page-layout">
+        {/* LEFT: Main seal form */}
+        <div className="step-main-col">
+          <div className="step-page-header">
             <button className="btn btn-ghost" onClick={() => router.back()}>
               ← Back
             </button>
             <span className="badge badge-gold">Step 3 of 4</span>
           </div>
 
-          <h2 style={{ fontSize: "1.5rem", color: "var(--primary)", marginBottom: "8px" }}>
-            {!file ? "Create Digital Fingerprint" : sealing ? "Computing Fingerprint..." : "Evidence Fingerprinted & Sealed"}
-          </h2>
-          <p style={{ marginBottom: "24px" }}>
+          <div className="step-icon-row">
+            <span className="step-icon-large">🔬</span>
+            <h1 className="step-main-heading">
+              {!file ? "Create Digital Fingerprint" : sealing ? "Computing Fingerprint..." : "Evidence Fingerprinted & Sealed"}
+            </h1>
+          </div>
+          <p className="step-main-desc">
             {!result
-              ? "Your browser will compute an immutable SHA-256 cryptographic hash of your file without sending the file anywhere."
-              : "The digital fingerprint has been generated. This cryptographic value will prove the file's integrity in court."}
+              ? "Your browser will compute an immutable SHA-256 cryptographic hash of your file without sending the file anywhere. This process runs entirely within your browser's private memory."
+              : "The digital fingerprint has been generated. This cryptographic value will prove the file's integrity in court and cannot be forged."}
           </p>
 
           {/* Initial File Selector */}
@@ -95,15 +104,7 @@ function SealContent() {
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                 onDragLeave={() => setDragOver(false)}
                 onClick={() => inputRef.current?.click()}
-                style={{
-                  border: `2px dashed ${dragOver ? "var(--secondary)" : "var(--gray-300)"}`,
-                  borderRadius: "var(--radius-md)",
-                  padding: "40px 20px",
-                  textAlign: "center",
-                  cursor: "pointer",
-                  background: dragOver ? "var(--secondary-light)" : "var(--white)",
-                  marginBottom: "20px",
-                }}
+                className={`seal-dropzone ${dragOver ? "drag-over" : ""}`}
               >
                 <input
                   ref={inputRef}
@@ -111,46 +112,46 @@ function SealContent() {
                   style={{ display: "none" }}
                   onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
                 />
-                <div style={{ fontSize: "2.5rem", marginBottom: "8px" }}>🛡️</div>
-                <div style={{ fontWeight: 700, color: "var(--gray-900)", fontSize: "1rem", marginBottom: "4px" }}>
-                  Select or drop file to seal
+                <div className="dropzone-icon">🛡️</div>
+                <div className="dropzone-title">Select or drop your evidence file here</div>
+                <div className="dropzone-subtitle">
+                  Zero-storage local execution — the file never leaves this device
                 </div>
-                <div style={{ fontSize: "0.8125rem", color: "var(--gray-600)" }}>
-                  Zero-storage local execution. The file never leaves this device.
-                </div>
+                <button className="btn btn-secondary" style={{ marginTop: "16px", pointerEvents: "none" }}>
+                  Browse Files
+                </button>
               </div>
 
-              <div className="alert alert-info">
-                <strong>Zero-Knowledge Execution:</strong>
-                <br />
-                The WebCrypto API calculates this mathematical signature directly within your browser's private memory sandbox.
+              <div className="alert alert-info" style={{ marginTop: "20px" }}>
+                <strong>Zero-Knowledge Execution:</strong><br />
+                The WebCrypto API calculates this mathematical signature directly within your browser's private memory sandbox. No file bytes are transmitted.
               </div>
             </div>
           )}
 
           {/* Hashing in Progress */}
           {sealing && file && (
-            <div style={{ textAlign: "center", padding: "32px 0" }}>
-              <div style={{ fontWeight: 700, color: "var(--primary)", fontSize: "1.1rem", marginBottom: "8px" }}>
-                {file.name}
+            <div className="sealing-progress-block">
+              <div className="sealing-filename">{file.name}</div>
+              <div className="sealing-meta">{formatSize(file.size)} · SHA-256 Algorithm · Browser-only execution</div>
+              <div className="sealing-bar-track">
+                <div className="sealing-bar-fill" style={{ width: `${progress}%` }} />
               </div>
-              <div style={{ fontSize: "0.875rem", color: "var(--gray-600)", marginBottom: "20px" }}>
-                {formatSize(file.size)} &bull; SHA-256 Algorithm
-              </div>
-
-              <div style={{ height: "8px", background: "var(--gray-100)", borderRadius: "4px", overflow: "hidden", maxWidth: "360px", margin: "0 auto 12px" }}>
-                <div style={{ height: "100%", background: "var(--primary)", width: `${progress}%`, transition: "width 0.1s ease" }} />
-              </div>
-              <div className="mono" style={{ fontSize: "0.8125rem", color: "var(--gray-600)" }}>
-                Computing local digest: {Math.round(progress)}%
-              </div>
+              <div className="mono sealing-percent">Computing local digest: {Math.round(progress)}%</div>
             </div>
           )}
 
           {/* Sealing Result */}
           {result && !sealing && (
             <div>
-              {/* File Details Table */}
+              <div className="seal-result-success">
+                <span className="seal-success-icon">✅</span>
+                <div>
+                  <div style={{ fontWeight: 700, color: "var(--success)", fontSize: "1rem" }}>Evidence Successfully Fingerprinted</div>
+                  <div style={{ fontSize: "0.8125rem", color: "var(--gray-600)" }}>Cryptographic seal recorded at {new Date(result.sealedAt).toLocaleString()}</div>
+                </div>
+              </div>
+
               <div className="table-container" style={{ marginBottom: "20px" }}>
                 <table className="data-table">
                   <tbody>
@@ -174,7 +175,6 @@ function SealContent() {
                 </table>
               </div>
 
-              {/* SHA-256 Fingerprint Display */}
               <div style={{ marginBottom: "20px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
                   <label className="form-label" style={{ margin: 0 }}>
@@ -182,28 +182,17 @@ function SealContent() {
                   </label>
                   <span className="badge badge-success">✓ Local Seal Valid</span>
                 </div>
-                <div className="hash-container">
-                  {formatHash(result.sha256)}
-                </div>
+                <div className="hash-container">{formatHash(result.sha256)}</div>
               </div>
 
-              {/* Two-Score Explanation Notice */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "24px" }}>
-                <div style={{ background: "var(--success-bg)", border: "1px solid var(--success-border)", padding: "12px 14px", borderRadius: "var(--radius-sm)" }}>
-                  <div style={{ fontWeight: 700, color: "var(--success)", fontSize: "0.8125rem", marginBottom: "4px" }}>
-                    ✓ INTEGRITY: VERIFIED
-                  </div>
-                  <div style={{ fontSize: "0.75rem", color: "var(--gray-900)", lineHeight: 1.4 }}>
-                    Mathematical proof that this exact file payload has not been modified since sealing.
-                  </div>
+              <div className="grid-2col" style={{ marginBottom: "24px" }}>
+                <div style={{ background: "var(--success-bg)", border: "1px solid var(--success-border)", padding: "14px 16px", borderRadius: "var(--radius-sm)" }}>
+                  <div style={{ fontWeight: 700, color: "var(--success)", fontSize: "0.8125rem", marginBottom: "4px" }}>✓ INTEGRITY: VERIFIED</div>
+                  <div style={{ fontSize: "0.75rem", color: "var(--gray-900)", lineHeight: 1.4 }}>Mathematical proof that this exact file payload has not been modified since sealing.</div>
                 </div>
-                <div style={{ background: "var(--info-bg)", border: "1px solid var(--info-border)", padding: "12px 14px", borderRadius: "var(--radius-sm)" }}>
-                  <div style={{ fontWeight: 700, color: "var(--info)", fontSize: "0.8125rem", marginBottom: "4px" }}>
-                    ℹ AUTHENTICITY: PENDING
-                  </div>
-                  <div style={{ fontSize: "0.75rem", color: "var(--gray-900)", lineHeight: 1.4 }}>
-                    Requires investigator triage & contextual review. Integrity alone does not prove truthfulness.
-                  </div>
+                <div style={{ background: "var(--info-bg)", border: "1px solid var(--info-border)", padding: "14px 16px", borderRadius: "var(--radius-sm)" }}>
+                  <div style={{ fontWeight: 700, color: "var(--info)", fontSize: "0.8125rem", marginBottom: "4px" }}>ℹ AUTHENTICITY: PENDING</div>
+                  <div style={{ fontSize: "0.75rem", color: "var(--gray-900)", lineHeight: 1.4 }}>Requires investigator triage & contextual review. Integrity alone does not prove truthfulness.</div>
                 </div>
               </div>
 
@@ -212,10 +201,64 @@ function SealContent() {
                 className="btn btn-primary btn-block btn-lg"
                 onClick={() => router.push(`/certificate?path=${path}`)}
               >
-                Continue to Finalize Certificate →
+                Continue to Finalize Certificate (Step 4) →
               </button>
             </div>
           )}
+        </div>
+
+        {/* RIGHT: Help panel */}
+        <div className="step-help-col">
+          <div className="step-help-card">
+            <div className="step-help-header">
+              <span>🧮</span>
+              <h3>What is SHA-256?</h3>
+            </div>
+            <p style={{ fontSize: "0.8375rem", color: "var(--gray-600)", lineHeight: 1.6, margin: "0 0 12px" }}>
+              SHA-256 is a cryptographic algorithm that converts any file into a unique 64-character string.
+              If even a single pixel or character changes, the entire fingerprint changes completely.
+            </p>
+            <ul className="step-help-list">
+              {[
+                "Impossible to reverse-engineer the file from the hash",
+                "Two different files can never produce the same hash",
+                "Mathematically proven tamper detection",
+                "Accepted as evidence in Indian courts under BSA §63",
+              ].map((point, i) => (
+                <li key={i}>
+                  <span className="step-help-check">✓</span>
+                  <span>{point}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="step-help-card">
+            <div className="step-help-header">
+              <span>🏛️</span>
+              <h4>Legal Validity</h4>
+            </div>
+            <p style={{ fontSize: "0.8125rem", color: "var(--gray-600)", lineHeight: 1.55, margin: 0 }}>
+              Digital fingerprints created via VERITAS SEAL are admissible as electronic evidence under{" "}
+              <strong>Bhartiya Sakshya Adhiniyam (BSA) §63</strong> and the{" "}
+              <strong>Information Technology Act 2000, Section 65B</strong>.
+            </p>
+          </div>
+
+          <div className="step-help-card step-help-emergency">
+            <div className="step-help-header">
+              <span>📞</span>
+              <h4>Emergency Contacts</h4>
+            </div>
+            <a href="tel:1098" className="step-emergency-link">
+              <span className="step-emergency-num">1098</span>
+              <span>Childline — 24/7 Free</span>
+            </a>
+            <a href="tel:112" className="step-emergency-link">
+              <span className="step-emergency-num">112</span>
+              <span>National Emergency</span>
+            </a>
+          </div>
         </div>
       </div>
     </GovLayout>

@@ -34,10 +34,10 @@ if %errorlevel% neq 0 (
 :: STEP 2: Configure Environment Variables
 :: ------------------------------------------------------------------------------
 echo [2/3] Configuring Environment...
-if not exist "backend\.env" (
-    if exist "backend\.env.example" (
-        copy backend\.env.example backend\.env >nul
-        echo [OK] Created backend\.env from template.
+if not exist ".env" (
+    if exist ".env.example" (
+        copy .env.example .env >nul
+        echo [OK] Created .env from template.
     )
 )
 
@@ -60,11 +60,11 @@ echo   ✔ ALL VERITAS COMPONENTS ARE LAUNCHED & READY VIA DOCKER!
 echo ======================================================================
 echo.
 echo Service Endpoints:
-echo   - Police Console UI : http://localhost:47804
-echo   - Seal Citizen App  : http://localhost:47803
-echo   - Backend REST API  : http://localhost:47802
-echo   - OpenAPI Docs      : http://localhost:47802/docs
-echo   - Postgres DB       : 127.0.0.1:47800 (db: acpia, user: acpia)
+echo   - Police Console UI : http://localhost:48804
+echo   - Seal Citizen App  : http://localhost:48803
+echo   - Backend REST API  : http://localhost:48802
+echo   - OpenAPI Docs      : http://localhost:48802/docs
+echo   - Postgres DB       : 127.0.0.1:48800 (db: acpia, user: acpia)
 echo.
 echo Demo Credentials (Password: password123):
 echo   - Investigator : investigator1

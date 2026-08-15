@@ -1,6 +1,6 @@
 """
 ACPIA v3 Backend Configuration — stripped to essentials per master spec.
-Three services: Postgres, Ollama, this app.
+Three services: Postgres (Neon), OpenRouter/Gemini (AI), this app.
 """
 from pydantic_settings import BaseSettings
 from functools import lru_cache
@@ -15,7 +15,6 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "insecure-dev-only-secret-set-a-real-one-in-.env"
     BACKEND_PORT: int = 47802
     MAX_UPLOAD_SIZE_MB: int = 500
-    STORAGE_PATH: str = "./storage"
     # Explicit opt-in only. Creates well-known demo accounts (see
     # scripts/seed.py) and RESETS their passwords on every restart.
     # Never enable this against a database holding real cases.
@@ -35,17 +34,39 @@ class Settings(BaseSettings):
     DATABASE_URL_APP: str = "postgresql+asyncpg://veritas_app:veritas_app_dev_pw@localhost:47800/acpia"
     DB_APP_ROLE: str = "veritas_app"
     DB_APP_PASSWORD: str = "veritas_app_dev_pw"
-    # Azure Database for PostgreSQL Flexible Server (and most managed
-    # Postgres) requires SSL. asyncpg needs this passed via connect_args,
-    # not a "?ssl=require" query string on the URL — that's a libpq/psycopg
-    # convention asyncpg's DSN parser doesn't reliably honor.
+    # Neon (and most managed Postgres) requires SSL. asyncpg needs this
+    # passed via connect_args, not a "?ssl=require" query string on the URL
+    # — that's a libpq/psycopg convention asyncpg's DSN parser doesn't
+    # reliably honor. Use Neon's *direct* (non-pooled) connection string
+    # here, not the "-pooler" one — asyncpg's server-side prepared
+    # statements are incompatible with PgBouncer transaction pooling.
     DB_SSL_REQUIRE: bool = False
 
-    # ── Ollama — three small resident models ─────────────
-    OLLAMA_BASE_URL: str = "http://localhost:47801"
-    VISION_MODEL: str = "moondream"
-    LLM_MODEL: str = "qwen2.5:3b"
-    EMBED_MODEL: str = "nomic-embed-text"
+    # ── OpenRouter — text + vision, ordered fallback chains ──────────────
+    # Comma-separated model IDs, tried in order until one succeeds. Free
+    # models on OpenRouter come and go — re-check
+    # https://openrouter.ai/models?max_price=0 before deploying and update
+    # these via the Render dashboard env var, no code change/redeploy needed.
+    OPENROUTER_API_KEY: str = ""
+    OPENROUTER_TEXT_MODELS: str = (
+        "deepseek/deepseek-chat-v3.1:free,"
+        "meta-llama/llama-3.3-70b-instruct:free,"
+        "qwen/qwen-2.5-72b-instruct:free,"
+        "google/gemma-3-27b-it:free,"
+        "mistralai/mistral-small-3.2-24b-instruct:free"
+    )
+    OPENROUTER_VISION_MODELS: str = (
+        "qwen/qwen2.5-vl-32b-instruct:free,"
+        "meta-llama/llama-3.2-11b-vision-instruct:free,"
+        "google/gemma-3-27b-it:free,"
+        "mistralai/mistral-small-3.2-24b-instruct:free"
+    )
+
+    # ── Google Gemini — embeddings only (OpenRouter has no embeddings API) ─
+    GEMINI_API_KEY: str = ""
+
+    # ── Cloudinary — evidence file storage (Render free tier has no disk) ─
+    CLOUDINARY_URL: str = ""
 
     # ── JWT ───────────────────────────────────────────────
     JWT_ALGORITHM: str = "HS256"
@@ -57,15 +78,15 @@ class Settings(BaseSettings):
     # credentials config by reflecting whatever Origin the caller sends —
     # i.e. any website can make authenticated cross-origin requests.
     CORS_ORIGINS: List[str] = [
-        "http://localhost:47803",
-        "http://localhost:47804",
-        "http://127.0.0.1:47803",
-        "http://127.0.0.1:47804",
+        "http://localhost:48803",
+        "http://localhost:48804",
+        "http://127.0.0.1:48803",
+        "http://127.0.0.1:48804",
     ]
 
     # ── VERITAS frontends (QR pairing / dispute links) ────
-    SEAL_URL: str = "http://localhost:47803"
-    CONSOLE_URL: str = "http://localhost:47804"
+    SEAL_URL: str = "http://192.168.11.209:48803"
+    CONSOLE_URL: str = "http://192.168.11.209:48804"
 
     # ── SMTP Email (Gmail App Password) ───────────────────
     # Set real values in backend/.env (gitignored). Never hardcode
@@ -88,22 +109,6 @@ class Settings(BaseSettings):
         return self.SECRET_KEY
 
     @property
-    def ollama_url(self) -> str:
-        return self.OLLAMA_BASE_URL
-        
-    @property
-    def model_vision(self) -> str:
-        return self.VISION_MODEL
-        
-    @property
-    def model_text(self) -> str:
-        return self.LLM_MODEL
-        
-    @property
-    def model_embed(self) -> str:
-        return self.EMBED_MODEL
-
-    @property
     def database_url_sync(self) -> str:
         return self.DATABASE_URL_SYNC
 
@@ -120,7 +125,7 @@ def get_settings() -> Settings:
         bad = [name for name, default in _INSECURE_DEFAULTS.items() if getattr(s, name) == default]
         if "password" in s.DATABASE_URL:
             bad.append("DATABASE_URL")
-        # A real deployment (Azure App Service or otherwise) that still
+        # A real deployment (Render or otherwise) that still
         # points at localhost means CORS will reject every real frontend
         # request, and every QR/dispute link emailed to a citizen or
         # officer will point at a URL nobody outside this container can
@@ -133,12 +138,18 @@ def get_settings() -> Settings:
             bad.append("CONSOLE_URL")
         if s.SMTP_ENABLED and not (s.SMTP_USER and s.SMTP_PASSWORD):
             bad.append("SMTP_USER/SMTP_PASSWORD (SMTP_ENABLED=true but credentials are empty)")
+        if not s.OPENROUTER_API_KEY:
+            bad.append("OPENROUTER_API_KEY")
+        if not s.GEMINI_API_KEY:
+            bad.append("GEMINI_API_KEY")
+        if not s.CLOUDINARY_URL:
+            bad.append("CLOUDINARY_URL")
         if bad:
             raise RuntimeError(
                 f"Refusing to start in production with insecure/unset value(s): "
                 f"{', '.join(bad)}. Set real values via the environment "
-                f"(Azure App Service → Configuration → Application settings, "
-                f"or backend/.env locally) before deploying."
+                f"(Render → Environment tab, or backend/.env locally) "
+                f"before deploying."
             )
     return s
 

@@ -51,6 +51,9 @@ dependencies = [
 
     # Email (SMTP via Gmail App Password)
     "aiosmtplib>=3.0.0",
+
+    # Evidence file storage (Render free tier has no persistent disk)
+    "cloudinary>=1.40.0",
 ]
 
 [project.optional-dependencies]

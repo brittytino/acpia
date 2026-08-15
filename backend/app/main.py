@@ -1,13 +1,12 @@
 """
 VERITAS — Main FastAPI application.
 Evidence you can trust. Investigation you can defend.
-Three services: Postgres, Ollama, this app.
+Three services: Postgres (Neon), OpenRouter/Gemini (AI), this app.
 """
 import logging
 import sys
 import os
 from contextlib import asynccontextmanager
-import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -18,29 +17,9 @@ log = logging.getLogger("veritas")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
 
-async def _warm_models():
-    """
-    Pin all three models resident in Ollama memory (keep_alive: -1).
-    ~4 GB total — fits 6 GB VRAM with headroom. No eviction, ever.
-    """
-    models = (settings.VISION_MODEL, settings.LLM_MODEL, settings.EMBED_MODEL)
-    async with httpx.AsyncClient(base_url=settings.OLLAMA_BASE_URL, timeout=300) as c:
-        for model in models:
-            try:
-                await c.post("/api/generate", json={
-                    "model": model,
-                    "prompt": "ready",
-                    "stream": False,
-                    "keep_alive": -1,
-                })
-                log.info(f"✅ Model warm: {model}")
-            except Exception as e:
-                log.warning(f"⚠ Model warm failed ({model}): {e}")
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    log.info("VERITAS starting — Postgres + Ollama + this app")
+    log.info("VERITAS starting — Postgres + OpenRouter/Gemini + this app")
 
     try:
         await create_tables()
@@ -58,12 +37,6 @@ async def lifespan(app: FastAPI):
             log.warning("⚠️  Seeded demo users with known passwords — dev/staging only, never production")
     except Exception as e:
         log.error(f"❌ Database init/seed failed: {e}")
-
-    import os
-    os.makedirs(settings.STORAGE_PATH, exist_ok=True)
-
-    import asyncio
-    asyncio.create_task(_warm_models())
 
     log.info(f"✅ VERITAS ready on port {settings.BACKEND_PORT}")
     yield
@@ -112,7 +85,7 @@ app.include_router(cases.router, prefix="/api/v1")
 app.include_router(evidence.router, prefix="/api/v1")
 app.include_router(leads.router, prefix="/api/v1")
 app.include_router(stream.router, prefix="/api/v1")
-app.include_router(reports.router, prefix="/api/v1")
+app.include_router(reports.router, prefix="/api/v1/cases")
 app.include_router(veritas.router, prefix="/api/v1")
 
 log.info("✅ All routers registered")

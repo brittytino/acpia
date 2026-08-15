@@ -21,6 +21,7 @@ from app.models.user import User
 from app.core.security import get_current_user
 from app.core.custody import write_custody
 from app.config import settings
+from app.services import storage
 
 router = APIRouter(tags=["Evidence"])
 
@@ -99,17 +100,38 @@ async def upload_evidence(
     existing = (await db.execute(
         select(Evidence).where(Evidence.case_id == case_id, Evidence.sha256 == actual_sha256)
     )).scalar_one_or_none()
-    if existing:
-        raise HTTPException(409, "This exact file (same SHA-256) is already in this case.")
-
-    # Store file. Strip any directory components from the client-supplied
-    # filename first — otherwise a name like "../../../etc/cron.d/x" escapes
-    # storage_dir entirely (Path() does not confine `/` on join).
+    
+    # Strip any directory components from the client-supplied filename, then
+    # upload to Cloudinary (Render's free tier has no persistent disk).
     safe_filename = Path(file.filename or "unknown").name
-    storage_dir = Path(settings.STORAGE_PATH) / "cases" / str(case_id)
-    storage_dir.mkdir(parents=True, exist_ok=True)
-    storage_path = storage_dir / f"{actual_sha256[:16]}_{safe_filename}"
-    storage_path.write_bytes(content)
+    mime_type = file.content_type or "application/octet-stream"
+    uploaded = await storage.upload_bytes(content, safe_filename, mime_type, folder=f"cases/{case_id}")
+    storage_path = uploaded["url"]
+
+    if existing:
+        if existing.storage_path:
+            raise HTTPException(409, "This exact file (same SHA-256) is already in this case.")
+        else:
+            # Hash-only submission (e.g. from Dispute/Pair) is now physically uploaded
+            existing.storage_path = storage_path
+            existing.size_bytes = len(content)
+            existing.mime_type = file.content_type or "application/octet-stream"
+            # Auto-create conversation if it's text
+            if existing.mime_type.startswith("text/") and integrity_ok:
+                convo = Conversation(
+                    case_id=case_id, evidence_id=existing.id,
+                    platform="unknown", participants=["user_a", "user_b"]
+                )
+                db.add(convo)
+            
+            await db.commit()
+            
+            # Fire the pipeline immediately so AI Analysis and Entity Graph run!
+            from app.pipeline import run_pipeline
+            import asyncio
+            asyncio.create_task(run_pipeline(str(case_id)))
+            
+            return {"id": str(existing.id), "sha256": existing.sha256, "matched_hash": True}
 
     # Create evidence record
     ev = Evidence(
@@ -197,10 +219,9 @@ async def import_zip(
                 import mimetypes
                 mime = mimetypes.guess_type(name)[0] or "application/octet-stream"
 
-                storage_dir = Path(settings.STORAGE_PATH) / "cases" / str(case_id)
-                storage_dir.mkdir(parents=True, exist_ok=True)
-                sp = storage_dir / f"{sha[:16]}_{Path(name).name}"
-                sp.write_bytes(file_bytes)
+                uploaded = await storage.upload_bytes(
+                    file_bytes, Path(name).name, mime, folder=f"cases/{case_id}"
+                )
 
                 ev = Evidence(
                     case_id=case_id,
@@ -211,7 +232,7 @@ async def import_zip(
                     size_bytes=len(file_bytes),
                     sha256=sha,
                     integrity_ok=True,
-                    storage_path=str(sp),
+                    storage_path=uploaded["url"],
                 )
                 db.add(ev)
                 await db.flush()

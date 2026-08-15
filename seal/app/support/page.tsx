@@ -50,7 +50,7 @@ export default function SupportPage() {
 
   return (
     <GovLayout>
-      <div className="container-narrow" style={{ padding: "40px var(--space-6)" }}>
+      <div className="container" style={{ padding: "40px var(--space-6)" }}>
         <div style={{ marginBottom: "28px" }}>
           <span className="badge badge-gold" style={{ marginBottom: "8px" }}>
             Helplines & Resources
