@@ -111,7 +111,7 @@ app.include_router(cases.router, prefix="/api/v1")
 app.include_router(evidence.router, prefix="/api/v1")
 app.include_router(leads.router, prefix="/api/v1")
 app.include_router(stream.router, prefix="/api/v1")
-app.include_router(reports.router, prefix="/api/v1")
+app.include_router(reports.router, prefix="/api/v1/cases")
 app.include_router(veritas.router, prefix="/api/v1")
 
 log.info("✅ All routers registered")
