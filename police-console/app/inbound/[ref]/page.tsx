@@ -119,7 +119,7 @@ export default function InboundDetail({ params }: { params: { ref: string } }) {
             <span className="badge badge-success">✓ Cryptographic Chain Valid</span>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
+          <div className="detail-meta-grid">
             <div>
               <div style={{ fontSize: "0.75rem", color: "var(--gray-600)", fontWeight: 700, textTransform: "uppercase" }}>Intake Category</div>
               <div style={{ fontWeight: 700, color: "var(--primary)", marginTop: "2px" }}>

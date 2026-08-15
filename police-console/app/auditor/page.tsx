@@ -91,7 +91,7 @@ export default function AuditorPage() {
         )}
 
         {audit && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+          <div className="audit-grid">
             {/* Hash Chain Integrity */}
             <div className="card">
               <div className="card-header">

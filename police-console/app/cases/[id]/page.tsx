@@ -273,7 +273,7 @@ export default function CaseWorkspace({ params }: { params: { id: string } }) {
 
       <div className="page-body">
         {/* Main Split Grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: "24px" }}>
+        <div className="workspace-grid">
           {/* Main Content Area */}
           <div>
             {/* Blind Dual Submission Status (if FAIR) */}
@@ -282,7 +282,7 @@ export default function CaseWorkspace({ params }: { params: { id: string } }) {
                 <div style={{ fontWeight: 700, color: "var(--primary)", fontSize: "0.9375rem", marginBottom: "8px" }}>
                   Blind Dual Submission Status
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "8px" }}>
+                <div className="detail-meta-grid" style={{ marginBottom: "8px" }}>
                   {disputeCodes.map((dc) => (
                     <div key={dc.role} style={{ background: "var(--gray-50)", border: "var(--border)", borderRadius: "var(--radius-sm)", padding: "10px 14px" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>

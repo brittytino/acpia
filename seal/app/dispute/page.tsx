@@ -195,7 +195,7 @@ function DisputeContent() {
                 <div style={{ marginBottom: "20px" }}>
                   <label className="form-label">Sealed Artifacts ({results.length}):</label>
                   {results.map((r, i) => (
-                    <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "var(--gray-50)", border: "var(--border)", borderRadius: "var(--radius-sm)", marginBottom: "6px" }}>
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "var(--gray-50)", border: "var(--border)", borderRadius: "var(--radius-sm)", marginBottom: "6px", flexWrap: "wrap", gap: "8px" }}>
                       <div>
                         <div style={{ fontWeight: 700, color: "var(--gray-900)", fontSize: "0.875rem" }}>{r.filename}</div>
                         <div className="mono" style={{ fontSize: "0.75rem", color: "var(--gray-600)" }}>
