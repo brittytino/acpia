@@ -59,7 +59,6 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         log.error(f"❌ Database init/seed failed: {e}")
 
-    import os
     os.makedirs(settings.STORAGE_PATH, exist_ok=True)
 
     import asyncio
