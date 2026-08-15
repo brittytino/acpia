@@ -86,43 +86,48 @@ function CertificateContent() {
 
   return (
     <GovLayout>
-      <div className="container-form" style={{ padding: "40px var(--space-6)" }}>
-        {/* Step Tracker */}
-        <div className="step-tracker">
-          <div className="step-item completed">
-            <div className="step-circle">✓</div>
-            <span>Situation</span>
-          </div>
-          <div className="step-line completed" />
-          <div className="step-item completed">
-            <div className="step-circle">✓</div>
-            <span>Preserve</span>
-          </div>
-          <div className="step-line completed" />
-          <div className="step-item completed">
-            <div className="step-circle">✓</div>
-            <span>Digital Fingerprint</span>
-          </div>
-          <div className="step-line completed" />
-          <div className="step-item active">
-            <div className="step-circle">4</div>
-            <span>Certificate</span>
+      {/* Full-width step banner */}
+      <div className="step-banner">
+        <div className="step-banner-inner">
+          <div className="step-tracker">
+            <div className="step-item completed">
+              <div className="step-circle">✓</div>
+              <span>Situation</span>
+            </div>
+            <div className="step-line completed" />
+            <div className="step-item completed">
+              <div className="step-circle">✓</div>
+              <span>Preserve</span>
+            </div>
+            <div className="step-line completed" />
+            <div className="step-item completed">
+              <div className="step-circle">✓</div>
+              <span>Digital Fingerprint</span>
+            </div>
+            <div className="step-line completed" />
+            <div className="step-item active">
+              <div className="step-circle">4</div>
+              <span>Certificate</span>
+            </div>
           </div>
         </div>
+      </div>
 
-        <div className="card">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "8px" }}>
-            <button className="btn btn-ghost" onClick={() => router.back()}>
-              ← Back
-            </button>
-            <span className="badge badge-gold">Step 4 of 4</span>
+      {/* Full-width two-column layout */}
+      <div className="step-page-layout">
+        {/* LEFT: Main certificate form */}
+        <div className="step-main-col">
+          <div className="step-page-header">
+            <button className="btn btn-ghost" onClick={() => router.back()}>← Back</button>
+            <span className="badge badge-gold">Step 4 of 4 — Final</span>
           </div>
 
-          <h2 style={{ fontSize: "1.5rem", color: "var(--primary)", marginBottom: "8px" }}>
-            Finalize Your Evidence Certificate
-          </h2>
-          <p style={{ marginBottom: "24px" }}>
-            Provide your email and an optional statement. Your evidence will be cryptographically sealed and you'll receive a confirmation email.
+          <div className="step-icon-row">
+            <span className="step-icon-large">📜</span>
+            <h1 className="step-main-heading">Finalize Your Evidence Certificate</h1>
+          </div>
+          <p className="step-main-desc">
+            Provide your email and an optional statement. Your evidence will be cryptographically sealed and you'll receive an official BSA §63 compliant certificate.
           </p>
 
           {sealResult && (
@@ -244,6 +249,66 @@ function CertificateContent() {
               </button>
             </div>
           )}
+        </div>
+
+        {/* RIGHT: Help panel */}
+        <div className="step-help-col">
+          <div className="step-help-card">
+            <div className="step-help-header">
+              <span>📄</span>
+              <h3>What is in the Certificate?</h3>
+            </div>
+            <ul className="step-help-list">
+              {[
+                "Your unique reference code (for police submission)",
+                "SHA-256 digital fingerprint of your evidence file",
+                "BSA §63 compliant timestamp of sealing",
+                "File name, size, and MIME type metadata",
+                "Optional incident narrative you provide",
+                "Cryptographic chain of custody record",
+              ].map((point, i) => (
+                <li key={i}>
+                  <span className="step-help-check">✓</span>
+                  <span>{point}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="step-help-card">
+            <div className="step-help-header">
+              <span>🚔</span>
+              <h4>Submitting to Police</h4>
+            </div>
+            <p style={{ fontSize: "0.8125rem", color: "var(--gray-600)", lineHeight: 1.55, margin: "0 0 10px" }}>
+              Once you receive your certificate, you can submit your reference code to:
+            </p>
+            <ul className="step-help-list">
+              <li><span className="step-help-check">→</span><span>Your nearest police station</span></li>
+              <li><span className="step-help-check">→</span><span>Childline 1098 helpline</span></li>
+              <li><span className="step-help-check">→</span><a href="https://cybercrime.gov.in" target="_blank" rel="noopener noreferrer">cybercrime.gov.in portal</a></li>
+              <li><span className="step-help-check">→</span><a href="https://ncpcr.gov.in/page/pocso-e-box.html" target="_blank" rel="noopener noreferrer">NCPCR POCSO e-Box</a></li>
+            </ul>
+          </div>
+
+          <div className="step-help-card step-help-emergency">
+            <div className="step-help-header">
+              <span>📞</span>
+              <h4>Emergency Contacts</h4>
+            </div>
+            <a href="tel:1098" className="step-emergency-link">
+              <span className="step-emergency-num">1098</span>
+              <span>Childline — 24/7 Free</span>
+            </a>
+            <a href="tel:112" className="step-emergency-link">
+              <span className="step-emergency-num">112</span>
+              <span>National Emergency</span>
+            </a>
+            <a href="tel:1930" className="step-emergency-link">
+              <span className="step-emergency-num">1930</span>
+              <span>Cyber Crime Helpline</span>
+            </a>
+          </div>
         </div>
       </div>
     </GovLayout>

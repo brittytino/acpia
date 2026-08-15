@@ -151,6 +151,429 @@ a:hover { color: var(--primary); }
   padding: 0 clamp(16px, 3vw, 32px);
 }
 
+/* ══════════════════════════════════════════════
+   STEP PAGES — Full-Width Two-Column Layout
+   ══════════════════════════════════════════════ */
+
+/* Step banner across full width */
+.step-banner {
+  background: var(--white);
+  border-bottom: 2px solid var(--gray-200);
+  padding: 16px 0;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.step-banner-inner {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 clamp(16px, 3vw, 40px);
+}
+
+/* Full-width two-column grid */
+.step-page-layout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 0;
+  max-width: 1440px;
+  margin: 0 auto;
+  width: 100%;
+  min-height: calc(100vh - 200px);
+}
+
+/* LEFT: Main content column */
+.step-main-col {
+  padding: 40px clamp(24px, 4vw, 56px);
+  border-right: 1px solid var(--gray-200);
+  background: var(--white);
+}
+
+/* RIGHT: Help/sidebar column */
+.step-help-col {
+  padding: 32px 28px;
+  background: var(--gray-50);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  border-left: 1px solid var(--gray-200);
+}
+
+/* Step page internal elements */
+.step-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.step-icon-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.step-icon-large {
+  font-size: 2rem;
+  flex-shrink: 0;
+  line-height: 1;
+  margin-top: 4px;
+}
+
+.step-main-heading {
+  font-size: clamp(1.35rem, 2.5vw, 1.875rem) !important;
+  font-weight: 900 !important;
+  color: var(--primary) !important;
+  line-height: 1.2 !important;
+  margin-bottom: 0 !important;
+}
+
+.step-main-desc {
+  font-size: 1rem;
+  color: var(--gray-600);
+  line-height: 1.65;
+  margin-bottom: 32px;
+  max-width: 680px;
+}
+
+/* Step option cards (guide page) */
+.step-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.step-option-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+  background: var(--white);
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+  width: 100%;
+  font-family: var(--font-sans);
+}
+
+.step-option-card:hover {
+  border-color: var(--secondary);
+  background: var(--secondary-light);
+  transform: translateX(4px);
+  box-shadow: 0 2px 14px rgba(0, 90, 156, 0.1);
+}
+
+.step-option-num {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--primary-light);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  flex-shrink: 0;
+}
+
+.step-option-card:hover .step-option-num {
+  background: var(--primary);
+  color: var(--white);
+}
+
+.step-option-text {
+  flex: 1;
+  font-weight: 600;
+  color: var(--gray-900);
+  font-size: 0.9375rem;
+  line-height: 1.4;
+}
+
+.step-option-arrow {
+  color: var(--secondary);
+  font-weight: 700;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.step-footer-action {
+  border-top: 1px solid var(--gray-200);
+  padding-top: 20px;
+}
+
+/* Platform tabs */
+.platform-tab-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 8px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--gray-600);
+}
+
+.platform-tab-btn[data-active="true"] {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 900;
+}
+
+.platform-tab-btn:hover {
+  border-color: var(--secondary);
+  background: var(--secondary-light);
+  color: var(--primary);
+}
+
+/* Platform instructions */
+.platform-instructions-box {
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  padding: 20px 24px;
+  margin-bottom: 24px;
+}
+
+.platform-instructions-title {
+  font-weight: 700;
+  color: var(--primary);
+  font-size: 0.9375rem;
+  margin-bottom: 14px;
+}
+
+.platform-instructions-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.platform-instructions-list li {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  font-size: 0.875rem;
+  color: var(--gray-900);
+  line-height: 1.5;
+}
+
+.platform-step-num {
+  width: 22px;
+  height: 22px;
+  background: var(--primary);
+  color: var(--white);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* Seal dropzone */
+.seal-dropzone {
+  border: 2px dashed var(--gray-300);
+  border-radius: var(--radius-md);
+  padding: 52px 24px;
+  text-align: center;
+  cursor: pointer;
+  background: var(--white);
+  transition: all 0.15s ease;
+  margin-bottom: 20px;
+}
+
+.seal-dropzone:hover, .seal-dropzone.drag-over {
+  border-color: var(--secondary);
+  background: var(--secondary-light);
+}
+
+.dropzone-icon {
+  font-size: 3rem;
+  margin-bottom: 12px;
+}
+
+.dropzone-title {
+  font-weight: 700;
+  color: var(--gray-900);
+  font-size: 1.0625rem;
+  margin-bottom: 6px;
+}
+
+.dropzone-subtitle {
+  font-size: 0.875rem;
+  color: var(--gray-600);
+}
+
+/* Sealing progress */
+.sealing-progress-block {
+  text-align: center;
+  padding: 40px 24px;
+  background: var(--primary-light);
+  border-radius: var(--radius-md);
+  margin-bottom: 24px;
+}
+
+.sealing-filename {
+  font-weight: 700;
+  color: var(--primary);
+  font-size: 1rem;
+  margin-bottom: 6px;
+  word-break: break-all;
+}
+
+.sealing-meta {
+  font-size: 0.8125rem;
+  color: var(--gray-600);
+  margin-bottom: 20px;
+}
+
+.sealing-bar-track {
+  height: 8px;
+  background: var(--gray-200);
+  border-radius: 4px;
+  overflow: hidden;
+  max-width: 420px;
+  margin: 0 auto 12px;
+}
+
+.sealing-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+  transition: width 0.1s ease;
+}
+
+.sealing-percent {
+  font-size: 0.8125rem;
+  color: var(--gray-600);
+}
+
+/* Seal result success row */
+.seal-result-success {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--success-bg);
+  border: 1px solid var(--success-border);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  margin-bottom: 24px;
+}
+
+.seal-success-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+/* Help panel cards */
+.step-help-card {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+}
+
+.step-help-card.step-help-emergency {
+  background: var(--primary);
+  border-color: var(--primary-dark);
+}
+
+.step-help-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.step-help-header h3, .step-help-header h4 {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: var(--gray-900);
+}
+
+.step-help-emergency .step-help-header h4 {
+  color: var(--white);
+}
+
+.step-help-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.step-help-list li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 0.8125rem;
+  color: var(--gray-600);
+  line-height: 1.45;
+}
+
+.step-help-check {
+  color: var(--secondary);
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 0;
+  font-size: 0.875rem;
+}
+
+/* Emergency links in help panel */
+.step-emergency-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  margin-bottom: 8px;
+  transition: background 0.12s;
+  color: var(--white);
+}
+
+.step-emergency-link:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--white);
+  text-decoration: none;
+}
+
+.step-emergency-link:last-child {
+  margin-bottom: 0;
+}
+
+.step-emergency-num {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 900;
+  color: var(--gold);
+  min-width: 52px;
+}
+
+.step-emergency-link span:last-child {
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+
 /* ── Section Header Utilities ── */
 .section-header {
   display: flex;
@@ -1430,5 +1853,48 @@ html.font-large { font-size: 18px; }
 
   .process-steps-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ── Step-Page Layout Responsive Breakpoints ── */
+@media (max-width: 900px) {
+  .step-page-layout {
+    grid-template-columns: 1fr;
+  }
+  .step-main-col {
+    border-right: none;
+    border-bottom: 1px solid var(--gray-200);
+    padding: 32px clamp(16px, 4vw, 36px);
+  }
+  .step-help-col {
+    border-left: none;
+    padding: 24px clamp(16px, 4vw, 32px);
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .step-help-card {
+    flex: 1 1 280px;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .step-help-col {
+    flex-direction: column;
+  }
+  .step-help-card {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .step-icon-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .step-main-heading {
+    font-size: 1.35rem !important;
+  }
+  .step-page-layout {
+    min-height: auto;
   }
 }
