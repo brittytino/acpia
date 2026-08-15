@@ -13,20 +13,23 @@ function UtilityBar() {
   return (
     <div className="utility-bar">
       <div className="utility-inner">
-        <div className="utility-group">
+        <div className="utility-left">
           <div className="font-size-ctrls">
-            <span style={{ marginRight: "4px" }}>Font Size:</span>
+            <span style={{ marginRight: "4px" }}>Font:</span>
             <button onClick={() => setFontSize("small")} aria-label="Decrease font size">A−</button>
             <button onClick={() => setFontSize("normal")} aria-label="Default font size" className="active">A</button>
             <button onClick={() => setFontSize("large")} aria-label="Increase font size">A+</button>
           </div>
-          <a href="#main-content">Skip to Main Content</a>
+          <a href="#main-content" className="skip-link">Skip to Main Content</a>
         </div>
-        <div className="utility-group">
-          <span>National Emergency:</span>
-          <a href="tel:112" style={{ color: "var(--gold)", fontWeight: 700 }}>112</a>
-          <span style={{ marginLeft: "6px" }}>Childline:</span>
-          <a href="tel:1098" style={{ color: "var(--gold)", fontWeight: 700 }}>1098</a>
+        <div className="utility-right">
+          <span className="emergency-item">
+            <span>National Emergency:</span> <a href="tel:112" className="gold-phone">112</a>
+          </span>
+          <span className="emergency-divider">&bull;</span>
+          <span className="emergency-item">
+            <span>Childline:</span> <a href="tel:1098" className="gold-phone">1098</a>
+          </span>
         </div>
       </div>
     </div>
