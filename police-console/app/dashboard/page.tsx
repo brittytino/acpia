@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:47802";
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:48802";
 
 export default function Dashboard() {
   const router = useRouter();

@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { sealFile, formatHash, type SealResult } from "@/lib/seal";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? `http://${window.location.hostname}:47802` : "http://localhost:47802");
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? `http://${window.location.hostname}:48802` : "http://localhost:48802");
 
 export default function PairPage({ params }: { params: { token: string } }) {
   const [status, setStatus] = useState<"loading" | "ready" | "expired" | "error">("loading");

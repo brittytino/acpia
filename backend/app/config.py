@@ -57,15 +57,15 @@ class Settings(BaseSettings):
     # credentials config by reflecting whatever Origin the caller sends —
     # i.e. any website can make authenticated cross-origin requests.
     CORS_ORIGINS: List[str] = [
-        "http://localhost:47803",
-        "http://localhost:47804",
-        "http://127.0.0.1:47803",
-        "http://127.0.0.1:47804",
+        "http://localhost:48803",
+        "http://localhost:48804",
+        "http://127.0.0.1:48803",
+        "http://127.0.0.1:48804",
     ]
 
     # ── VERITAS frontends (QR pairing / dispute links) ────
-    SEAL_URL: str = "http://localhost:47803"
-    CONSOLE_URL: str = "http://localhost:47804"
+    SEAL_URL: str = "http://localhost:48803"
+    CONSOLE_URL: str = "http://localhost:48804"
 
     # ── SMTP Email (Gmail App Password) ───────────────────
     # Set real values in backend/.env (gitignored). Never hardcode

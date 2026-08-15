@@ -3,7 +3,7 @@ import { Shell } from "../../components/Shell";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:47802";
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:48802";
 
 export default function InboundDetail({ params }: { params: { ref: string } }) {
   const router = useRouter();

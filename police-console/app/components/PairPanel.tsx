@@ -2,7 +2,7 @@
 import { useState } from "react";
 import QRCode from "react-qr-code";
 
-const API = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? `http://${window.location.hostname}:47802` : "http://localhost:47802");
+const API = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? `http://${window.location.hostname}:48802` : "http://localhost:48802");
 
 export function PairPanel({ caseId }: { caseId: string }) {
   const [pairing, setPairing] = useState<{ url: string; expires_in: number } | null>(null);
@@ -19,7 +19,7 @@ export function PairPanel({ caseId }: { caseId: string }) {
       if (res.ok) {
         const data = await res.json();
         // Override the backend-provided URL with our actual host for mobile access
-        data.url = `http://${window.location.hostname}:47803/pair/${data.token}`;
+        data.url = `http://${window.location.hostname}:48803/pair/${data.token}`;
         setPairing(data);
       }
     } finally {
