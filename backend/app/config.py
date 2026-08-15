@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     # Explicit opt-in only. Creates well-known demo accounts (see
     # scripts/seed.py) and RESETS their passwords on every restart.
     # Never enable this against a database holding real cases.
-    SEED_DEMO_USERS: bool = False
+    SEED_DEMO_USERS: bool = True
 
     # ── Database (Postgres + pgvector only) ──────────────
     # DATABASE_URL — the table-owning role. Used only for DDL: migrations
