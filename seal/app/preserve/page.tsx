@@ -62,7 +62,7 @@ function PreserveContent() {
 
   return (
     <GovLayout>
-      <div className="container-form" style={{ padding: "40px var(--space-6)" }}>
+      <div className="container-form-wide" style={{ padding: "40px var(--space-6)" }}>
         {/* Step Progress */}
         <div className="step-tracker">
           <div className="step-item completed">
