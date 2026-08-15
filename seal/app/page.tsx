@@ -81,7 +81,7 @@ export default function HomePage() {
               >
                 <div className="service-card-icon">{opt.icon}</div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px", flexWrap: "wrap" }}>
                     <h4 style={{ margin: 0 }}>{opt.title}</h4>
                     <span className="badge badge-info">{opt.badge}</span>
                   </div>
@@ -99,7 +99,7 @@ export default function HomePage() {
             >
               <div className="service-card-icon" style={{ background: "var(--gold-light)", color: "var(--gold)" }}>⚖️</div>
               <div style={{ flex: 1 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px", flexWrap: "wrap" }}>
                   <h4 style={{ margin: 0 }}>I have a code — a complaint or dispute involves me</h4>
                   <span className="badge badge-gold">Respondent Flow</span>
                 </div>

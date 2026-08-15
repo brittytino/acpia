@@ -533,7 +533,7 @@ export default function CaseWorkspace({ params }: { params: { id: string } }) {
                         {e.exif && Object.keys(e.exif).length > 0 && (
                           <div style={{ marginBottom: "10px", background: "var(--white)", border: "var(--border)", borderRadius: "var(--radius-sm)", padding: "10px 14px" }}>
                             <div style={{ fontSize: "0.6875rem", fontWeight: 700, textTransform: "uppercase", color: "var(--gray-600)", marginBottom: "6px" }}>Embedded Metadata (EXIF)</div>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 16px" }}>
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "4px 16px" }}>
                               {Object.entries(e.exif).slice(0, 10).map(([key, val]: [string, any]) => (
                                 <div key={key} style={{ fontSize: "0.6875rem" }}>
                                   <span style={{ color: "var(--gray-500)" }}>{key}:</span>{" "}
@@ -590,7 +590,7 @@ export default function CaseWorkspace({ params }: { params: { id: string } }) {
                       <h3>🔍 Evidence Comparison Report — Complainant vs Respondent</h3>
                     </div>
                     <div style={{ padding: "16px 20px" }}>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
+                      <div className="detail-meta-grid" style={{ marginBottom: "20px", gap: "20px" }}>
                         {/* Complainant Column */}
                         <div>
                           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>

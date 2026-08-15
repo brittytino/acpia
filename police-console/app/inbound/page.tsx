@@ -61,21 +61,19 @@ export default function InboundList() {
 
       <div className="page-body">
         <div className="card">
-          <div className="card-header">
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", width: "100%", justifyContent: "space-between" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <h2>Pending Triage Queue</h2>
-                <span className="badge badge-info">{filtered.length} Reports</span>
-              </div>
-              <div style={{ width: "260px" }}>
-                <input
-                  className="input"
-                  placeholder="Search by locator reference..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  style={{ fontSize: "0.8125rem", padding: "6px 10px" }}
-                />
-              </div>
+          <div className="card-header" style={{ display: "flex", alignItems: "center", gap: "12px", width: "100%", justifyContent: "space-between", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <h2>Pending Triage Queue</h2>
+              <span className="badge badge-info">{filtered.length} Reports</span>
+            </div>
+            <div style={{ minWidth: "200px", flex: "1 1 200px", maxWidth: "340px" }}>
+              <input
+                className="input"
+                placeholder="Search by locator reference..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                style={{ fontSize: "0.8125rem", padding: "6px 10px", width: "100%" }}
+              />
             </div>
           </div>
 

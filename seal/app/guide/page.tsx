@@ -74,7 +74,7 @@ function GuideContent() {
         </div>
 
         <div className="card">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "8px" }}>
             <button className="btn btn-ghost" onClick={() => router.push("/")}>
               ← Back to Home
             </button>

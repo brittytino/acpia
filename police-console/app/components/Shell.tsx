@@ -23,6 +23,15 @@ export function Shell({ children, title }: { children: React.ReactNode; title?: 
     setMenuOpen(false);
   }, [pathname]);
 
+  // Close on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   const logout = () => {
     localStorage.removeItem("acpia_token");
     localStorage.removeItem("acpia_user");
@@ -80,15 +89,15 @@ export function Shell({ children, title }: { children: React.ReactNode; title?: 
           </Link>
 
           {title && (
-            <div style={{ marginLeft: "16px", paddingLeft: "12px", borderLeft: "1px solid rgba(255,255,255,0.2)", fontSize: "0.8125rem", color: "rgba(255,255,255,0.85)", fontWeight: 700 }}>
+            <div className="topbar-page-title">
               {title}
             </div>
           )}
         </div>
 
         <div className="topbar-user">
-          <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.7)" }}>Unit:</span>
-          <strong>{user.username}</strong>
+          <span className="topbar-unit-label">Unit:</span>
+          <strong className="topbar-username">{user.username}</strong>
           <span className="user-badge">{user.role}</span>
           <button onClick={logout} className="btn-signout" title="Sign out of console">
             Sign Out
@@ -107,6 +116,22 @@ export function Shell({ children, title }: { children: React.ReactNode; title?: 
 
       {/* Responsive Sidebar (Fixed on Desktop, Drawer on Mobile) */}
       <aside className={`sidebar ${menuOpen ? "open" : ""}`}>
+        {/* Mobile Header inside drawer */}
+        <div className="sidebar-mobile-header">
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <span style={{ fontWeight: 900, color: "var(--primary)", fontSize: "0.875rem" }}>
+              NAVIGATION
+            </span>
+          </div>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => setMenuOpen(false)}
+            aria-label="Close menu drawer"
+          >
+            ✕ Close
+          </button>
+        </div>
+
         {navGroups.map((grp) => (
           <div key={grp.group} style={{ marginBottom: "16px" }}>
             <div className="nav-group-title">{grp.group}</div>

@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -24,9 +24,9 @@ function UtilityBar() {
         </div>
         <div className="utility-group">
           <span>National Emergency:</span>
-          <a href="tel:112" style={{ color: "var(--gold)" }}>112</a>
-          <span>Childline:</span>
-          <a href="tel:1098" style={{ color: "var(--gold)" }}>1098</a>
+          <a href="tel:112" style={{ color: "var(--gold)", fontWeight: 700 }}>112</a>
+          <span style={{ marginLeft: "6px" }}>Childline:</span>
+          <a href="tel:1098" style={{ color: "var(--gold)", fontWeight: 700 }}>1098</a>
         </div>
       </div>
     </div>
@@ -48,7 +48,7 @@ function MainHeader() {
             <p className="brand-subtext">Evidence you can trust. Investigation you can defend.</p>
           </div>
         </Link>
-        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+        <div className="header-actions">
           <a href="tel:1098" className="emergency-btn">
             ☎ Emergency Childline 1098
           </a>
@@ -62,6 +62,11 @@ function PrimaryNav() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // Close mobile navigation on route change
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
+
   const links = [
     { href: "/", label: "Home" },
     { href: "/guide?path=guardian", label: "Report an Incident" },
@@ -73,14 +78,18 @@ function PrimaryNav() {
   return (
     <nav className="primary-nav" aria-label="Main Navigation">
       <div className="nav-inner">
-        <button
-          className="nav-hamburger"
-          onClick={() => setMenuOpen(!menuOpen)}
-          aria-label="Toggle navigation menu"
-          aria-expanded={menuOpen}
-        >
-          {menuOpen ? "✕" : "☰"}
-        </button>
+        <div className="nav-mobile-bar">
+          <span className="nav-mobile-title">Menu Navigation</span>
+          <button
+            className="nav-hamburger"
+            onClick={() => setMenuOpen(!menuOpen)}
+            aria-label="Toggle navigation menu"
+            aria-expanded={menuOpen}
+          >
+            {menuOpen ? "✕ Close" : "☰ Menu"}
+          </button>
+        </div>
+
         <div className={`nav-links ${menuOpen ? "open" : ""}`}>
           {links.map((link) => {
             const isActive = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href.split("?")[0]);

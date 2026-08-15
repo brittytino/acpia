@@ -87,7 +87,7 @@ function PreserveContent() {
         </div>
 
         <div className="card">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "8px" }}>
             <button className="btn btn-ghost" onClick={() => router.back()}>
               ← Back
             </button>
@@ -102,7 +102,7 @@ function PreserveContent() {
           </p>
 
           {/* Platform Selector Tabs */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "8px", marginBottom: "20px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: "8px", marginBottom: "20px" }}>
             {PLATFORM_TIPS.map((p) => (
               <button
                 key={p.name}

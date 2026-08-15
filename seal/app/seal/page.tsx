@@ -70,7 +70,7 @@ function SealContent() {
         </div>
 
         <div className="card">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "8px" }}>
             <button className="btn btn-ghost" onClick={() => router.back()}>
               ← Back
             </button>
@@ -188,7 +188,7 @@ function SealContent() {
               </div>
 
               {/* Two-Score Explanation Notice */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "24px" }}>
+              <div className="grid-2col" style={{ marginBottom: "24px" }}>
                 <div style={{ background: "var(--success-bg)", border: "1px solid var(--success-border)", padding: "12px 14px", borderRadius: "var(--radius-sm)" }}>
                   <div style={{ fontWeight: 700, color: "var(--success)", fontSize: "0.8125rem", marginBottom: "4px" }}>
                     ✓ INTEGRITY: VERIFIED

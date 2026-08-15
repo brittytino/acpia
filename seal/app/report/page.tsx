@@ -121,7 +121,7 @@ I request that this reference be attached to the official FIR / Case Diary.`;
                     <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
                       <span style={{ fontSize: "1.75rem" }}>{ch.icon}</span>
                       <div>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "2px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "2px", flexWrap: "wrap" }}>
                           <strong style={{ color: "var(--primary)", fontSize: "1rem" }}>{ch.name}</strong>
                           <span className="badge badge-neutral">{ch.badge}</span>
                         </div>

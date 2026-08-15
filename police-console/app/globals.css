@@ -3,7 +3,7 @@
 /* ══════════════════════════════════════════════════════════════
    VERITAS Console — Digital Evidence Forensic Workstation
    Official Navy & Gold Identity (#003B6F / #C9972B)
-   Forensic Operational Design System (Fully Responsive & Wide)
+   Forensic Operational Design System (Wide & Fully Responsive)
    ══════════════════════════════════════════════════════════════ */
 
 :root {
@@ -47,6 +47,7 @@
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
+  --space-5: 20px;
   --space-6: 24px;
   --space-8: 32px;
 
@@ -63,7 +64,7 @@
   --radius-sm: 4px;
   --radius-md: 6px;
   --border: 1px solid var(--gray-200);
-  --sidebar-width: 240px;
+  --sidebar-width: 250px;
   --shadow-subtle: 0 1px 3px rgba(23, 33, 43, 0.05);
 }
 
@@ -72,7 +73,7 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  min-width: 0; /* Prevents flex and grid child overflow */
+  min-width: 0;
 }
 
 html {
@@ -93,9 +94,9 @@ body {
 }
 
 /* ── Typography ── */
-h1 { font-size: var(--text-2xl); font-weight: 700; color: var(--gray-900); line-height: 1.3; word-break: break-word; }
-h2 { font-size: var(--text-xl); font-weight: 700; color: var(--gray-900); line-height: 1.35; word-break: break-word; }
-h3 { font-size: var(--text-lg); font-weight: 700; color: var(--gray-900); line-height: 1.4; word-break: break-word; }
+h1 { font-size: clamp(1.35rem, 2vw, 1.65rem); font-weight: 700; color: var(--gray-900); line-height: 1.3; word-break: break-word; }
+h2 { font-size: clamp(1.15rem, 1.6vw, 1.35rem); font-weight: 700; color: var(--gray-900); line-height: 1.35; word-break: break-word; }
+h3 { font-size: 1.05rem; font-weight: 700; color: var(--gray-900); line-height: 1.4; word-break: break-word; }
 p  { color: var(--gray-600); word-break: break-word; }
 a  { color: var(--secondary); text-decoration: none; }
 a:hover { text-decoration: underline; }
@@ -103,10 +104,10 @@ a:hover { text-decoration: underline; }
 .mono { font-family: var(--font-mono); font-size: var(--text-sm); }
 .hash { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--gray-600); word-break: break-all; overflow-wrap: anywhere; }
 
-/* ── App Shell Layout ── */
+/* ── App Shell Layout (Wide & Responsive) ── */
 .app-shell {
   display: grid;
-  grid-template-columns: var(--sidebar-width) 1fr;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   grid-template-rows: 56px 1fr;
   min-height: 100vh;
   width: 100%;
@@ -119,13 +120,14 @@ a:hover { text-decoration: underline; }
   color: var(--white);
   display: flex;
   align-items: center;
-  padding: 0 var(--space-6);
+  padding: 0 clamp(12px, 2vw, 28px);
   border-bottom: 2px solid var(--gold);
   position: sticky;
   top: 0;
   z-index: 100;
   height: 56px;
   justify-content: space-between;
+  gap: var(--space-3);
 }
 
 .topbar-left {
@@ -141,7 +143,7 @@ a:hover { text-decoration: underline; }
   border: none;
   color: var(--white);
   font-size: 1.4rem;
-  padding: 4px 6px;
+  padding: 4px 8px;
   cursor: pointer;
   border-radius: var(--radius-sm);
   line-height: 1;
@@ -185,12 +187,31 @@ a:hover { text-decoration: underline; }
   white-space: nowrap;
 }
 
+.topbar-page-title {
+  margin-left: 16px;
+  padding-left: 12px;
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .topbar-user {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   font-size: var(--text-sm);
   flex-shrink: 0;
+}
+
+.topbar-unit-label {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.topbar-username {
+  color: var(--white);
 }
 
 .user-badge {
@@ -232,6 +253,11 @@ a:hover { text-decoration: underline; }
   top: 56px;
   overflow-y: auto;
   width: var(--sidebar-width);
+  z-index: 90;
+}
+
+.sidebar-mobile-header {
+  display: none;
 }
 
 .sidebar-backdrop {
@@ -286,7 +312,7 @@ a:hover { text-decoration: underline; }
 .page-header {
   background: var(--white);
   border-bottom: var(--border);
-  padding: var(--space-4) var(--space-6);
+  padding: var(--space-4) clamp(16px, 2.5vw, 32px);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -295,12 +321,12 @@ a:hover { text-decoration: underline; }
 }
 
 .page-body {
-  padding: var(--space-6);
+  padding: var(--space-6) clamp(16px, 2.5vw, 32px);
   flex: 1;
   width: 100%;
 }
 
-/* ── Responsive Workstation Grids ── */
+/* ── Wide Workstation Responsive Grids ── */
 .dashboard-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -309,7 +335,7 @@ a:hover { text-decoration: underline; }
 
 .workspace-grid {
   display: grid;
-  grid-template-columns: 1fr 320px;
+  grid-template-columns: minmax(0, 1fr) 340px;
   gap: 24px;
 }
 
@@ -326,10 +352,10 @@ a:hover { text-decoration: underline; }
   margin-bottom: 16px;
 }
 
-/* ── Metric Summary Panels ── */
+/* ── Metric Summary Panels (Wide 4-Column on Desktop) ── */
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-4);
   margin-bottom: var(--space-6);
 }
@@ -338,8 +364,8 @@ a:hover { text-decoration: underline; }
   background: var(--white);
   border: var(--border);
   border-radius: var(--radius-sm);
-  padding: var(--space-4);
-  border-left: 3px solid var(--primary);
+  padding: var(--space-4) var(--space-5);
+  border-left: 4px solid var(--primary);
   box-shadow: var(--shadow-subtle);
 }
 
@@ -357,7 +383,7 @@ a:hover { text-decoration: underline; }
 }
 
 .metric-value {
-  font-size: 1.75rem;
+  font-size: 1.85rem;
   font-weight: 900;
   color: var(--primary);
   line-height: 1.1;
@@ -421,7 +447,7 @@ table.data-table {
 
 table.data-table th {
   background: var(--gray-50);
-  padding: 10px 14px;
+  padding: 12px 16px;
   font-weight: 700;
   color: var(--gray-900);
   border-bottom: var(--border);
@@ -432,7 +458,7 @@ table.data-table th {
 }
 
 table.data-table td {
-  padding: 10px 14px;
+  padding: 12px 16px;
   border-bottom: var(--border);
   color: var(--gray-900);
   vertical-align: middle;
@@ -446,7 +472,7 @@ table.data-table tbody tr:hover { background: var(--secondary-light); cursor: po
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  padding: 2px 6px;
+  padding: 3px 7px;
   border-radius: var(--radius-sm);
   font-size: var(--text-xs);
   font-weight: 700;
@@ -503,7 +529,7 @@ table.data-table tbody tr:hover { background: var(--secondary-light); cursor: po
 .btn-reject { background: var(--white); color: var(--danger); border-color: var(--danger); }
 .btn-reject:hover:not(:disabled) { background: var(--danger-bg); }
 
-.btn-sm { padding: 4px 10px; font-size: var(--text-xs); }
+.btn-sm { padding: 5px 12px; font-size: var(--text-xs); }
 .btn-lg { padding: 10px 22px; font-size: var(--text-lg); }
 .btn-block { width: 100%; }
 
@@ -546,17 +572,18 @@ textarea.input { resize: vertical; min-height: 80px; }
   display: flex;
   border-bottom: 2px solid var(--gray-200);
   background: var(--white);
-  padding: 0 var(--space-6);
+  padding: 0 clamp(16px, 2.5vw, 32px);
   gap: var(--space-2);
   overflow-x: auto;
   white-space: nowrap;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
 
 .tab-btn {
   background: transparent;
   border: none;
-  padding: var(--space-3) var(--space-4);
+  padding: 12px 16px;
   font-family: var(--font-sans);
   font-size: var(--text-base);
   font-weight: 700;
@@ -580,16 +607,16 @@ textarea.input { resize: vertical; min-height: 80px; }
   align-items: center;
   justify-content: center;
   z-index: 200;
-  padding: var(--space-3);
+  padding: var(--space-4);
 }
 
 .modal-content {
   background: var(--white);
   border-radius: var(--radius-md);
-  width: 600px;
-  max-width: 95vw;
+  width: 640px;
+  max-width: min(640px, 95vw);
   max-height: 90vh;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.25);
   border: var(--border);
   overflow: hidden;
   display: flex;
@@ -625,17 +652,14 @@ textarea.input { resize: vertical; min-height: 80px; }
   flex-wrap: wrap;
 }
 
-/* ── Comprehensive Responsive Media Queries ── */
-@media (max-width: 1024px) {
-  .dashboard-grid,
-  .workspace-grid,
-  .audit-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
+/* ── Multi-Device Responsive Breakpoints ── */
+@media (max-width: 1200px) {
+  .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 840px) {
+@media (max-width: 1024px) {
   .app-shell {
     grid-template-columns: 1fr;
   }
@@ -644,34 +668,31 @@ textarea.input { resize: vertical; min-height: 80px; }
     display: block;
   }
 
-  .topbar {
-    padding: 0 var(--space-4);
-  }
-
-  .topbar-user {
-    gap: var(--space-2);
-  }
-
-  .topbar-user span:not(.user-badge) {
-    display: none;
-  }
-
   .sidebar {
     display: block;
     position: fixed;
     top: 56px;
     left: 0;
     bottom: 0;
-    width: 260px;
+    width: 280px;
     background: var(--white);
     z-index: 150;
     transform: translateX(-100%);
-    transition: transform 0.25s ease-in-out;
-    box-shadow: 4px 0 16px rgba(0, 0, 0, 0.15);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.18);
   }
 
   .sidebar.open {
     transform: translateX(0);
+  }
+
+  .sidebar-mobile-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    border-bottom: var(--border);
+    margin-bottom: 12px;
   }
 
   .sidebar-backdrop {
@@ -680,8 +701,24 @@ textarea.input { resize: vertical; min-height: 80px; }
     inset: 56px 0 0 0;
     background: rgba(23, 33, 43, 0.5);
     z-index: 140;
+    animation: fadeIn 0.15s ease-out;
   }
 
+  .dashboard-grid,
+  .workspace-grid,
+  .audit-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+@media (max-width: 900px) {
+  .topbar-page-title {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
   .page-header {
     flex-direction: column;
     align-items: flex-start;
@@ -700,20 +737,21 @@ textarea.input { resize: vertical; min-height: 80px; }
     padding: var(--space-4);
   }
 
-  .tabs-bar {
-    padding: 0 var(--space-4);
-  }
-
-  .summary-grid {
-    grid-template-columns: 1fr 1fr;
+  .detail-meta-grid {
+    grid-template-columns: 1fr;
     gap: 12px;
   }
 }
 
 @media (max-width: 600px) {
-  .detail-meta-grid {
+  .topbar-unit-label {
+    display: none;
+  }
+}
+
+@media (max-width: 540px) {
+  .summary-grid {
     grid-template-columns: 1fr;
-    gap: 12px;
   }
 
   .topbar-title {
@@ -723,11 +761,9 @@ textarea.input { resize: vertical; min-height: 80px; }
   .topbar-badge {
     display: none;
   }
-}
 
-@media (max-width: 480px) {
-  .summary-grid {
-    grid-template-columns: 1fr;
+  .topbar-username {
+    display: none;
   }
 
   .modal-body {
@@ -737,4 +773,9 @@ textarea.input { resize: vertical; min-height: 80px; }
   .modal-header, .modal-footer {
     padding: var(--space-3) var(--space-4);
   }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }

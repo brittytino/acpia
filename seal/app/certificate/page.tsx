@@ -111,7 +111,7 @@ function CertificateContent() {
         </div>
 
         <div className="card">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "8px" }}>
             <button className="btn btn-ghost" onClick={() => router.back()}>
               ← Back
             </button>
@@ -127,11 +127,11 @@ function CertificateContent() {
 
           {sealResult && (
             <div style={{ background: "var(--gray-50)", border: "var(--border)", borderRadius: "var(--radius-sm)", padding: "16px 20px", marginBottom: "24px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                <strong>{sealResult.filename}</strong>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px", flexWrap: "wrap", gap: "8px" }}>
+                <strong style={{ wordBreak: "break-all" }}>{sealResult.filename}</strong>
                 <span className="badge badge-success">✓ Cryptographically Fingerprinted</span>
               </div>
-              <div className="mono" style={{ fontSize: "0.75rem", color: "var(--gray-600)" }}>
+              <div className="mono" style={{ fontSize: "0.75rem", color: "var(--gray-600)", wordBreak: "break-all" }}>
                 SHA-256: {formatHash(sealResult.sha256).slice(0, 48)}...
               </div>
             </div>
